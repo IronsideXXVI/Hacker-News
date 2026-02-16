@@ -1,29 +1,21 @@
-//
-//  ContentView.swift
-//  Hacker News
-//
-//  Created by Dylan Ironside on 2/16/26.
-//
-
 import SwiftUI
-import WebKit
-
-struct WebView: NSViewRepresentable {
-    let url: URL
-
-    func makeNSView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.load(URLRequest(url: url))
-        return webView
-    }
-
-    func updateNSView(_ nsView: WKWebView, context: Context) {}
-}
 
 struct ContentView: View {
+    @State private var viewModel = FeedViewModel()
+
     var body: some View {
-        WebView(url: URL(string: "https://news.ycombinator.com/")!)
-            .frame(minWidth: 800, minHeight: 600)
+        NavigationSplitView(
+            columnVisibility: .constant(.all)
+        ) {
+            SidebarView(viewModel: viewModel)
+                .navigationSplitViewColumnWidth(min: 350, ideal: 420, max: 550)
+        } detail: {
+            DetailView(viewModel: viewModel)
+        }
+        .task {
+            await viewModel.loadFeed()
+        }
+        .frame(minWidth: 900, minHeight: 600)
     }
 }
 
