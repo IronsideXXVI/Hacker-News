@@ -8,9 +8,17 @@ struct DetailView: View {
     var body: some View {
         Group {
             if let profileURL = viewModel.viewingUserProfileURL {
-                ArticleWebView(url: profileURL)
+                VStack(spacing: 0) {
+                    if let story = viewModel.selectedStory {
+                        storyInfoBar(for: story)
+                    }
+                    ArticleWebView(url: profileURL)
+                }
             } else if let story = viewModel.selectedStory {
-                articleOrCommentsView(for: story)
+                VStack(spacing: 0) {
+                    storyInfoBar(for: story)
+                    articleOrCommentsView(for: story)
+                }
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "doc.richtext")
@@ -70,6 +78,54 @@ struct DetailView: View {
         .sheet(isPresented: $showingLoginSheet) {
             LoginSheetView(authManager: authManager)
         }
+    }
+
+    @ViewBuilder
+    private func storyInfoBar(for story: HNItem) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(story.title ?? "Untitled")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                if let domain = story.displayDomain {
+                    Text("(\(domain))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            HStack(spacing: 4) {
+                if let score = story.score {
+                    Text("\(score) points")
+                }
+                if let by = story.by {
+                    Text("by")
+                    Text(by)
+                        .foregroundStyle(.orange)
+                        .onHover { hovering in
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+                        .onTapGesture {
+                            viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(by)")
+                        }
+                }
+                Text(story.timeAgo)
+                if let descendants = story.descendants {
+                    Text("| \(descendants) comments")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.bar)
+        Divider()
     }
 
     @ViewBuilder
