@@ -33,16 +33,17 @@ struct DetailView: View {
             }
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
-                    HStack(spacing: 4) {
-                        Text("\(authManager.username) (\(authManager.karma))")
-                        Text("|")
-                            .foregroundStyle(.separator)
-                        Button("Logout") {
-                            Task { await authManager.logout() }
-                        }
-                        .buttonStyle(.plain)
+                    Text("\(authManager.username) (\(authManager.karma))")
+                        .foregroundStyle(.primary)
+                }
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem(placement: .automatic) {
+                if authManager.isLoggedIn {
+                    Button("Logout") {
+                        Task { await authManager.logout() }
                     }
-                    .foregroundStyle(.primary)
+                    .buttonStyle(.plain)
                 } else {
                     Button("Login") { showingLoginSheet = true }
                         .buttonStyle(.plain)
