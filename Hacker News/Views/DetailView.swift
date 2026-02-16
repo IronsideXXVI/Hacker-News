@@ -35,6 +35,7 @@ struct DetailView: View {
                 if authManager.isLoggedIn {
                     Text("\(authManager.username) (\(authManager.karma))")
                         .foregroundStyle(.primary)
+                        .padding(.horizontal, 8)
                 }
             }
             ToolbarSpacer(.fixed)
@@ -44,9 +45,11 @@ struct DetailView: View {
                         Task { await authManager.logout() }
                     }
                     .buttonStyle(.plain)
+                    .padding(.horizontal, 8)
                 } else {
                     Button("Login") { showingLoginSheet = true }
                         .buttonStyle(.plain)
+                        .padding(.horizontal, 8)
                 }
             }
         }
