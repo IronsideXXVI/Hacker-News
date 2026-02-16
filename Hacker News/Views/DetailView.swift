@@ -4,6 +4,7 @@ struct DetailView: View {
     @Bindable var viewModel: FeedViewModel
     var authManager: HNAuthManager
     @State private var showingLoginSheet = false
+    @State private var scrollProgress: Double = 0.0
 
     var body: some View {
         Group {
@@ -12,11 +13,13 @@ struct DetailView: View {
                     if let story = viewModel.selectedStory {
                         storyInfoBar(for: story)
                     }
-                    ArticleWebView(url: profileURL)
+                    scrollProgressBar()
+                    ArticleWebView(url: profileURL, scrollProgress: $scrollProgress)
                 }
             } else if let story = viewModel.selectedStory {
                 VStack(spacing: 0) {
                     storyInfoBar(for: story)
+                    scrollProgressBar()
                     articleOrCommentsView(for: story)
                 }
             } else {
@@ -31,6 +34,9 @@ struct DetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .onChange(of: viewModel.selectedStory) { scrollProgress = 0 }
+        .onChange(of: viewModel.preferArticleView) { scrollProgress = 0 }
+        .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0 }
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Picker("View", selection: $viewModel.preferArticleView) {
@@ -78,6 +84,21 @@ struct DetailView: View {
         .sheet(isPresented: $showingLoginSheet) {
             LoginSheetView(authManager: authManager)
         }
+    }
+
+    @ViewBuilder
+    private func scrollProgressBar() -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(Color.orange.opacity(0.15))
+                Rectangle()
+                    .fill(Color.orange)
+                    .frame(width: geometry.size.width * scrollProgress)
+            }
+        }
+        .frame(height: 3)
+        .animation(.linear(duration: 0.1), value: scrollProgress)
     }
 
     @ViewBuilder
@@ -131,9 +152,9 @@ struct DetailView: View {
     @ViewBuilder
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if viewModel.preferArticleView, let articleURL = story.displayURL {
-            ArticleWebView(url: articleURL)
+            ArticleWebView(url: articleURL, scrollProgress: $scrollProgress)
         } else {
-            ArticleWebView(url: story.commentsURL)
+            ArticleWebView(url: story.commentsURL, scrollProgress: $scrollProgress)
         }
     }
 }

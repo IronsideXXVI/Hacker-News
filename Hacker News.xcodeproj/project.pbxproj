@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E0D8E4DF2F43C68E00BA2D5C /* HackerNews.icon in Resources */ = {isa = PBXBuildFile; fileRef = E0D8E4DE2F43C68E00BA2D5C /* HackerNews.icon */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		E0D8E4A32F43A35200BA2D5C /* Hacker News.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Hacker News.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0D8E4DE2F43C68E00BA2D5C /* HackerNews.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HackerNews.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +39,7 @@
 			children = (
 				E0D8E4A52F43A35200BA2D5C /* Hacker News */,
 				E0D8E4A42F43A35200BA2D5C /* Products */,
+				E0D8E4DE2F43C68E00BA2D5C /* HackerNews.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -109,6 +115,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E0D8E4DF2F43C68E00BA2D5C /* HackerNews.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -248,7 +255,7 @@
 		E0D8E4B12F43A35300BA2D5C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = HackerNews;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Hacker News/Hacker_News.entitlements";
 				CODE_SIGN_STYLE = Automatic;
@@ -283,7 +290,7 @@
 		E0D8E4B22F43A35300BA2D5C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = HackerNews;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Hacker News/Hacker_News.entitlements";
 				CODE_SIGN_STYLE = Automatic;
