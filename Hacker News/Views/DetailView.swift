@@ -44,9 +44,8 @@ struct DetailView: View {
                     }
                     .foregroundStyle(.primary)
                 } else {
-                    Text("Login")
-                        .foregroundStyle(.secondary)
-                        .onTapGesture { showingLoginSheet = true }
+                    Button("Login") { showingLoginSheet = true }
+                        .buttonStyle(.plain)
                 }
             }
         }
