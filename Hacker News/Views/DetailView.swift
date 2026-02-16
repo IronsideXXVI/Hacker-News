@@ -7,7 +7,9 @@ struct DetailView: View {
 
     var body: some View {
         Group {
-            if let story = viewModel.selectedStory {
+            if let profileURL = viewModel.viewingUserProfileURL {
+                ArticleWebView(url: profileURL)
+            } else if let story = viewModel.selectedStory {
                 articleOrCommentsView(for: story)
             } else {
                 VStack(spacing: 8) {
@@ -29,13 +31,25 @@ struct DetailView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 180)
-                .disabled(viewModel.selectedStory == nil)
+                .disabled(viewModel.selectedStory == nil || viewModel.viewingUserProfileURL != nil)
             }
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
-                    Text("\(authManager.username) (\(authManager.karma))")
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 8)
+                    Button {
+                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)")
+                    } label: {
+                        Text("\(authManager.username) (\(authManager.karma))")
+                            .foregroundStyle(.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+                    .padding(.horizontal, 8)
                 }
             }
             ToolbarSpacer(.fixed)

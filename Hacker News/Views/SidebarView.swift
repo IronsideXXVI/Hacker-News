@@ -42,8 +42,10 @@ struct SidebarView: View {
             } else {
                 List(selection: $viewModel.selectedStory) {
                     ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, story in
-                        StoryRowView(story: story, rank: index + 1)
-                            .tag(story)
+                        StoryRowView(story: story, rank: index + 1) { username in
+                            viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
+                        }
+                        .tag(story)
                             .onAppear {
                                 Task { await viewModel.loadMoreIfNeeded(currentItem: story) }
                             }

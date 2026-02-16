@@ -3,6 +3,7 @@ import SwiftUI
 struct StoryRowView: View {
     let story: HNItem
     let rank: Int
+    var onUsernameTap: ((String) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -32,7 +33,19 @@ struct StoryRowView: View {
                     Text("\(score) points")
                 }
                 if let by = story.by {
-                    Text("by \(by)")
+                    Text("by")
+                    Text(by)
+                        .onHover { hovering in
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+                        .onTapGesture {
+                            onUsernameTap?(by)
+                        }
+                        .foregroundStyle(.orange)
                 }
                 Text(story.timeAgo)
                 if let descendants = story.descendants {

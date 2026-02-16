@@ -4,7 +4,10 @@ import Observation
 @Observable
 final class FeedViewModel {
     var stories: [HNItem] = []
-    var selectedStory: HNItem?
+    var selectedStory: HNItem? {
+        didSet { viewingUserProfileURL = nil }
+    }
+    var viewingUserProfileURL: URL?
     var currentFeed: HNFeedType = .top
     var isLoading = false
     var errorMessage: String?
