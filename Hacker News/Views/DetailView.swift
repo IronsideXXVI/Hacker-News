@@ -33,19 +33,20 @@ struct DetailView: View {
             }
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Text("\(authManager.username) (\(authManager.karma))")
-                            .foregroundStyle(.secondary)
+                        Text("|")
+                            .foregroundStyle(.separator)
                         Button("Logout") {
                             Task { await authManager.logout() }
                         }
+                        .buttonStyle(.plain)
                     }
+                    .foregroundStyle(.primary)
                 } else {
-                    Button {
-                        showingLoginSheet = true
-                    } label: {
-                        Label("Log in", systemImage: "person.crop.circle")
-                    }
+                    Text("Login")
+                        .foregroundStyle(.secondary)
+                        .onTapGesture { showingLoginSheet = true }
                 }
             }
         }
