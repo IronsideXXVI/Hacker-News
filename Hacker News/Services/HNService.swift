@@ -15,6 +15,12 @@ struct HNService {
         return try JSONDecoder().decode(HNItem.self, from: data)
     }
 
+    static func fetchUser(id: String) async throws -> HNUser {
+        let url = URL(string: baseURL + "user/\(id).json")!
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(HNUser.self, from: data)
+    }
+
     static func fetchItems(ids: [Int]) async throws -> [HNItem] {
         try await withThrowingTaskGroup(of: (Int, HNItem).self) { group in
             for (index, id) in ids.enumerated() {

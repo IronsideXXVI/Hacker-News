@@ -2,21 +2,13 @@ import SwiftUI
 
 struct DetailView: View {
     @Bindable var viewModel: FeedViewModel
+    var authManager: HNAuthManager
+    @State private var showingLoginSheet = false
 
     var body: some View {
         Group {
             if let story = viewModel.selectedStory {
                 articleOrCommentsView(for: story)
-                    .toolbar {
-                        ToolbarItem(placement: .automatic) {
-                            Picker("View", selection: $viewModel.preferArticleView) {
-                                Text("Article").tag(true)
-                                Text("Comments").tag(false)
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(width: 180)
-                        }
-                    }
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "doc.richtext")
@@ -28,6 +20,37 @@ struct DetailView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Picker("View", selection: $viewModel.preferArticleView) {
+                    Text("Article").tag(true)
+                    Text("Comments").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 180)
+                .disabled(viewModel.selectedStory == nil)
+            }
+            ToolbarItem(placement: .automatic) {
+                if authManager.isLoggedIn {
+                    HStack(spacing: 6) {
+                        Text("\(authManager.username) (\(authManager.karma))")
+                            .foregroundStyle(.secondary)
+                        Button("Logout") {
+                            Task { await authManager.logout() }
+                        }
+                    }
+                } else {
+                    Button {
+                        showingLoginSheet = true
+                    } label: {
+                        Label("Log in", systemImage: "person.crop.circle")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingLoginSheet) {
+            LoginSheetView(authManager: authManager)
         }
     }
 

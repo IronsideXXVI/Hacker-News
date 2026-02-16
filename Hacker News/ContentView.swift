@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var viewModel = FeedViewModel()
+    @State private var authManager = HNAuthManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
@@ -11,7 +12,7 @@ struct ContentView: View {
             SidebarView(viewModel: viewModel)
                 .navigationSplitViewColumnWidth(min: 350, ideal: 420, max: 550)
         } detail: {
-            DetailView(viewModel: viewModel)
+            DetailView(viewModel: viewModel, authManager: authManager)
         }
         .task {
             await viewModel.loadFeed()
