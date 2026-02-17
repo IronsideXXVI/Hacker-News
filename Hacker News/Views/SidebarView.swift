@@ -8,6 +8,8 @@ struct SidebarView: View {
             FeedToolbar(viewModel: viewModel)
             Divider()
 
+            Spacer().frame(height: 6)
+
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -27,7 +29,9 @@ struct SidebarView: View {
                 }
             }
             .padding(.horizontal, 10)
-            .padding(.vertical, 10)
+            .padding(.vertical, 6)
+
+            Spacer().frame(height: 6)
             Divider()
 
             if viewModel.currentFeed.hasStoryList {
