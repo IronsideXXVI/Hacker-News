@@ -133,7 +133,7 @@ struct ArticleWebView: NSViewRepresentable {
     @media (prefers-color-scheme: dark) {
         body {
             background-color: #1e1e1e !important;
-            color: #e0e0e0 !important;
+            color: #ffffff !important;
         }
 
         body > center > table,
@@ -141,7 +141,7 @@ struct ArticleWebView: NSViewRepresentable {
             background-color: #1e1e1e !important;
         }
 
-        td { color: #e0e0e0 !important; }
+        td, .commtext, .commtext * , font, span, p { color: #ffffff !important; }
 
         input[type="text"], input[type="password"], input[type="email"],
         input[type="url"], input[type="number"], input[type="search"],
@@ -162,6 +162,8 @@ struct ArticleWebView: NSViewRepresentable {
 
     /* Light mode */
     @media (prefers-color-scheme: light) {
+        td, .commtext, .commtext *, font, span, p { color: #000000 !important; }
+
         input[type="text"], input[type="password"], input[type="email"],
         input[type="url"], input[type="number"], input[type="search"],
         textarea, select {
@@ -217,7 +219,7 @@ struct ArticleWebView: NSViewRepresentable {
             webView.evaluateJavaScript(toolbarJS, completionHandler: nil)
 
             let path = webView.url?.path ?? ""
-            if path == "/user" || path == "/submit" || path.hasPrefix("/submit") {
+            if path == "/item" || path == "/user" || path == "/submit" || path.hasPrefix("/submit") {
                 let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
                 webView.evaluateJavaScript(formJS, completionHandler: nil)
             }
