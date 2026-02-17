@@ -38,6 +38,14 @@ struct DetailView: View {
         .onChange(of: viewModel.preferArticleView) { scrollProgress = 0 }
         .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0 }
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    Task { await viewModel.loadFeed() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .help("Refresh")
+            }
             ToolbarItem(placement: .automatic) {
                 Picker("View", selection: $viewModel.preferArticleView) {
                     Text("Article").tag(true)
