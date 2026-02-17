@@ -57,6 +57,15 @@ struct DetailView: View {
                 .help("Home")
             }
             ToolbarItem(placement: .navigation) {
+                if let url = currentExternalURL {
+                    ShareLink(item: url) {
+                        Image(systemName: "square.and.arrow.up")
+                            .imageScale(.medium)
+                    }
+                    .help("Share")
+                }
+            }
+            ToolbarItem(placement: .navigation) {
                 if currentExternalURL != nil {
                     Button {
                         if let url = currentExternalURL {
