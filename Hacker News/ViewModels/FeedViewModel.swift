@@ -8,6 +8,7 @@ final class FeedViewModel {
         didSet { viewingUserProfileURL = nil }
     }
     var viewingUserProfileURL: URL?
+    var webRefreshID = UUID()
     var currentFeed: HNFeedType = .top
     var isLoading = false
     var errorMessage: String?

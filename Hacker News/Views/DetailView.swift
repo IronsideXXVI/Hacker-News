@@ -15,6 +15,7 @@ struct DetailView: View {
                     }
                     scrollProgressBar()
                     ArticleWebView(url: profileURL, scrollProgress: $scrollProgress)
+                        .id(viewModel.webRefreshID)
                 }
             } else if let story = viewModel.selectedStory {
                 VStack(spacing: 0) {
@@ -40,9 +41,11 @@ struct DetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
+                    viewModel.webRefreshID = UUID()
                     Task { await viewModel.loadFeed() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
+                        .imageScale(.medium)
                 }
                 .help("Refresh")
             }
@@ -161,8 +164,10 @@ struct DetailView: View {
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if viewModel.preferArticleView, let articleURL = story.displayURL {
             ArticleWebView(url: articleURL, scrollProgress: $scrollProgress)
+                .id(viewModel.webRefreshID)
         } else {
             ArticleWebView(url: story.commentsURL, scrollProgress: $scrollProgress)
+                .id(viewModel.webRefreshID)
         }
     }
 }
