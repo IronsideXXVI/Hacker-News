@@ -181,11 +181,18 @@ struct ArticleWebView: NSViewRepresentable {
         if (window.__scrollObserverInstalled) return;
         window.__scrollObserverInstalled = true;
         function reportScroll() {
-            var h = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            var progress = h > 0 ? (document.documentElement.scrollTop / h) : 0;
+            var scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+            var docHeight = Math.max(
+                document.body.scrollHeight || 0, document.documentElement.scrollHeight || 0,
+                document.body.offsetHeight || 0, document.documentElement.offsetHeight || 0
+            );
+            var winHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+            var h = docHeight - winHeight;
+            var progress = h > 0 ? (scrollTop / h) : 0;
             window.webkit.messageHandlers.scrollHandler.postMessage(Math.min(Math.max(progress, 0), 1));
         }
         window.addEventListener('scroll', reportScroll, { passive: true });
+        document.addEventListener('scroll', reportScroll, { passive: true });
         window.addEventListener('resize', reportScroll, { passive: true });
         reportScroll();
     })();
