@@ -15,6 +15,8 @@ final class FeedViewModel {
         }
     }
     var webRefreshID = UUID()
+    var searchQuery: String = ""
+    var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
     var currentFeed: HNFeedType = .top
     var isLoading = false
     var errorMessage: String?
@@ -54,6 +56,29 @@ final class FeedViewModel {
               !isFetchingMore,
               loadedCount < allStoryIDs.count else { return }
         await loadNextBatch()
+    }
+
+    func searchStories() async {
+        let query = searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return }
+        isLoading = true
+        errorMessage = nil
+        stories = []
+        selectedStory = nil
+        allStoryIDs = []
+        loadedCount = 0
+
+        do {
+            stories = try await HNService.searchStories(query: query)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    func clearSearch() {
+        searchQuery = ""
+        Task { await loadFeed() }
     }
 
     func switchFeed(to feed: HNFeedType) {

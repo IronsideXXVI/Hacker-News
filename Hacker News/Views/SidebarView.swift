@@ -8,6 +8,28 @@ struct SidebarView: View {
             FeedToolbar(viewModel: viewModel)
             Divider()
 
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Search stories...", text: $viewModel.searchQuery)
+                    .textFieldStyle(.plain)
+                    .onSubmit {
+                        Task { await viewModel.searchStories() }
+                    }
+                if viewModel.isSearchActive {
+                    Button {
+                        viewModel.clearSearch()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            Divider()
+
             if viewModel.currentFeed.hasStoryList {
                 storyListView
             } else if let webURL = viewModel.currentFeed.webURL {
