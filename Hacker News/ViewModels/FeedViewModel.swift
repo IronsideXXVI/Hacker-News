@@ -41,7 +41,7 @@ final class FeedViewModel {
 
         do {
             allStoryIDs = try await HNService.fetchStoryIDs(for: currentFeed)
-            try await loadNextBatch()
+            await loadNextBatch()
         } catch {
             errorMessage = error.localizedDescription
         }
