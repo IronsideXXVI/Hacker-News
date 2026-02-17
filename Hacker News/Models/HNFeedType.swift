@@ -1,6 +1,10 @@
 import Foundation
 
 enum HNFeedType: String, CaseIterable {
+    static var allCases: [HNFeedType] {
+        [.top, .new, .past, .comments, .ask, .show, .jobs]
+    }
+
     case top
     case new
     case past

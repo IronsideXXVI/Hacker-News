@@ -61,6 +61,19 @@ struct DetailView: View {
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
                     Button {
+                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
+                    } label: {
+                        Text("Submit")
+                            .foregroundStyle(.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 8)
+                }
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem(placement: .automatic) {
+                if authManager.isLoggedIn {
+                    Button {
                         viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)")
                     } label: {
                         Text("\(authManager.username) (\(authManager.karma))")
