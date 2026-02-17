@@ -56,6 +56,19 @@ struct DetailView: View {
                 }
                 .help("Home")
             }
+            ToolbarItem(placement: .navigation) {
+                if currentExternalURL != nil {
+                    Button {
+                        if let url = currentExternalURL {
+                            NSWorkspace.shared.open(url)
+                        }
+                    } label: {
+                        Image(systemName: "safari")
+                            .imageScale(.medium)
+                    }
+                    .help("Open in Browser")
+                }
+            }
             ToolbarItem(placement: .automatic) {
                 Picker("View", selection: $viewModel.preferArticleView) {
                     Text("Article").tag(true)
@@ -189,5 +202,16 @@ struct DetailView: View {
             ArticleWebView(url: story.commentsURL, scrollProgress: $scrollProgress)
                 .id(viewModel.webRefreshID)
         }
+    }
+
+    private var currentExternalURL: URL? {
+        if let profileURL = viewModel.viewingUserProfileURL {
+            return profileURL
+        }
+        guard let story = viewModel.selectedStory else { return nil }
+        if viewModel.preferArticleView, let articleURL = story.displayURL {
+            return articleURL
+        }
+        return story.commentsURL
     }
 }
