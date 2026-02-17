@@ -37,28 +37,24 @@ struct DetailView: View {
         .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0 }
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                HStack(spacing: 6) {
-                    Button {
-                        viewModel.webRefreshID = UUID()
-                        Task { await viewModel.loadFeed() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .imageScale(.medium)
-                    }
-                    .help("Refresh")
-
-                    Divider()
-                        .frame(height: 16)
-
-                    Button {
-                        viewModel.selectedStory = nil
-                        viewModel.viewingUserProfileURL = nil
-                    } label: {
-                        Image(systemName: "house")
-                            .imageScale(.medium)
-                    }
-                    .help("Home")
+                Button {
+                    viewModel.webRefreshID = UUID()
+                    Task { await viewModel.loadFeed() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .imageScale(.medium)
                 }
+                .help("Refresh")
+            }
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    viewModel.selectedStory = nil
+                    viewModel.viewingUserProfileURL = nil
+                } label: {
+                    Image(systemName: "house")
+                        .imageScale(.medium)
+                }
+                .help("Home")
             }
             ToolbarItem(placement: .automatic) {
                 Picker("View", selection: $viewModel.preferArticleView) {
