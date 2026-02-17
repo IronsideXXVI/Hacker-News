@@ -10,9 +10,6 @@ struct DetailView: View {
         Group {
             if let profileURL = viewModel.viewingUserProfileURL {
                 VStack(spacing: 0) {
-                    if let story = viewModel.selectedStory {
-                        storyInfoBar(for: story)
-                    }
                     scrollProgressBar()
                     ArticleWebView(url: profileURL, scrollProgress: $scrollProgress)
                         .id(viewModel.webRefreshID)

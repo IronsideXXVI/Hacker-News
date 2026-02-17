@@ -5,9 +5,15 @@ import Observation
 final class FeedViewModel {
     var stories: [HNItem] = []
     var selectedStory: HNItem? {
-        didSet { viewingUserProfileURL = nil }
+        didSet {
+            if selectedStory != nil { viewingUserProfileURL = nil }
+        }
     }
-    var viewingUserProfileURL: URL?
+    var viewingUserProfileURL: URL? {
+        didSet {
+            if viewingUserProfileURL != nil { selectedStory = nil }
+        }
+    }
     var webRefreshID = UUID()
     var currentFeed: HNFeedType = .top
     var isLoading = false
