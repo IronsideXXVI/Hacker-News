@@ -115,7 +115,6 @@ struct DetailView: View {
                     .padding(.horizontal, 8)
                 }
             }
-            ToolbarSpacer(.fixed)
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
                     Button("Logout") {
