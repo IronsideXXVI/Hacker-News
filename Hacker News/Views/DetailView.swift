@@ -9,11 +9,11 @@ struct DetailView: View {
     var body: some View {
         Group {
             if viewModel.showingSettings {
-                SettingsView()
+                SettingsView(viewModel: viewModel)
             } else if let profileURL = viewModel.viewingUserProfileURL {
                 VStack(spacing: 0) {
                     scrollProgressBar()
-                    ArticleWebView(url: profileURL, scrollProgress: $scrollProgress)
+                    ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
                         .id(viewModel.webRefreshID)
                 }
             } else if let story = viewModel.selectedStory {
@@ -218,13 +218,13 @@ struct DetailView: View {
     @ViewBuilder
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if story.type == "comment" {
-            ArticleWebView(url: story.commentsURL, scrollProgress: $scrollProgress)
+            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
                 .id(viewModel.webRefreshID)
         } else if viewModel.preferArticleView, let articleURL = story.displayURL {
-            ArticleWebView(url: articleURL, scrollProgress: $scrollProgress)
+            ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
                 .id(viewModel.webRefreshID)
         } else {
-            ArticleWebView(url: story.commentsURL, scrollProgress: $scrollProgress)
+            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
                 .id(viewModel.webRefreshID)
         }
     }

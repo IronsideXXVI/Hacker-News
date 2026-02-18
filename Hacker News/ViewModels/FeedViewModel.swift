@@ -49,12 +49,28 @@ final class FeedViewModel {
         didSet { UserDefaults.standard.set(preferArticleView, forKey: "preferArticleView") }
     }
 
+    var adBlockingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(adBlockingEnabled, forKey: "adBlockingEnabled")
+            webRefreshID = UUID()
+        }
+    }
+
+    var popUpBlockingEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(popUpBlockingEnabled, forKey: "popUpBlockingEnabled")
+            webRefreshID = UUID()
+        }
+    }
+
     private var currentPage = 0
     private var hasMore = false
     private var isFetchingMore = false
 
     init() {
         self.preferArticleView = UserDefaults.standard.object(forKey: "preferArticleView") as? Bool ?? true
+        self.adBlockingEnabled = UserDefaults.standard.object(forKey: "adBlockingEnabled") as? Bool ?? true
+        self.popUpBlockingEnabled = UserDefaults.standard.object(forKey: "popUpBlockingEnabled") as? Bool ?? true
     }
 
     func loadFeed() async {

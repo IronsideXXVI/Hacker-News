@@ -3,12 +3,39 @@ import WebKit
 
 struct ArticleWebView: NSViewRepresentable {
     let url: URL
+    let adBlockingEnabled: Bool
+    let popUpBlockingEnabled: Bool
     @Binding var scrollProgress: Double
     @Environment(\.colorScheme) private var colorScheme
 
-    init(url: URL, scrollProgress: Binding<Double> = .constant(0)) {
+    private static var cachedContentRuleList: WKContentRuleList?
+
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, scrollProgress: Binding<Double> = .constant(0)) {
         self.url = url
+        self.adBlockingEnabled = adBlockingEnabled
+        self.popUpBlockingEnabled = popUpBlockingEnabled
         self._scrollProgress = scrollProgress
+    }
+
+    // MARK: - Ad Block Rules
+
+    static let adBlockRulesJSON = """
+    [
+        {"trigger":{"url-filter":".*","if-domain":["*doubleclick.net","*googlesyndication.com","*googleadservices.com","*google-analytics.com","*adnxs.com","*outbrain.com","*taboola.com","*criteo.com","*amazon-adsystem.com","*quantserve.com","*scorecardresearch.com","*rubiconproject.com","*sharethrough.com","*moatads.com"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":"/ads?/"},"action":{"type":"block"}},
+        {"trigger":{"url-filter":"/ad/"},"action":{"type":"block"}}
+    ]
+    """
+
+    static func precompileAdBlockRules() {
+        WKContentRuleListStore.default().compileContentRuleList(
+            forIdentifier: "HNAdBlockRules",
+            encodedContentRuleList: adBlockRulesJSON
+        ) { ruleList, error in
+            if let ruleList {
+                cachedContentRuleList = ruleList
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -42,9 +69,18 @@ struct ArticleWebView: NSViewRepresentable {
         config.userContentController.addUserScript(scrollScript)
         config.userContentController.add(context.coordinator, name: "scrollHandler")
 
+        if adBlockingEnabled, let ruleList = Self.cachedContentRuleList {
+            config.userContentController.add(ruleList)
+        }
+
+        if popUpBlockingEnabled {
+            config.preferences.javaScriptCanOpenWindowsAutomatically = false
+        }
+
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.allowsBackForwardNavigationGestures = true
         webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         context.coordinator.currentURL = url
@@ -65,6 +101,7 @@ struct ArticleWebView: NSViewRepresentable {
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "scrollHandler")
+        webView.configuration.userContentController.removeAllContentRuleLists()
     }
 
     // MARK: - CSS Injection Helper
@@ -222,7 +259,7 @@ struct ArticleWebView: NSViewRepresentable {
     })();
     """
 
-    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         var parent: ArticleWebView
         var currentURL: URL?
 
@@ -254,6 +291,13 @@ struct ArticleWebView: NSViewRepresentable {
                 let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
                 webView.evaluateJavaScript(formJS, completionHandler: nil)
             }
+        }
+
+        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+                webView.load(URLRequest(url: url))
+            }
+            return nil
         }
     }
 }

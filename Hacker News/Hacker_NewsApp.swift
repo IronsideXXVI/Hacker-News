@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct Hacker_NewsApp: App {
+    init() {
+        ArticleWebView.precompileAdBlockRules()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
