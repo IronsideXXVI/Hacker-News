@@ -4,6 +4,7 @@ import WebKit
 struct ArticleWebView: NSViewRepresentable {
     let url: URL
     @Binding var scrollProgress: Double
+    @Environment(\.colorScheme) private var colorScheme
 
     init(url: URL, scrollProgress: Binding<Double> = .constant(0)) {
         self.url = url
@@ -25,6 +26,13 @@ struct ArticleWebView: NSViewRepresentable {
         )
         config.userContentController.addUserScript(toolbarHideScript)
 
+        let colorSchemeScript = WKUserScript(
+            source: Self.colorSchemeMetaJS,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: false
+        )
+        config.userContentController.addUserScript(colorSchemeScript)
+
         let scrollScript = WKUserScript(
             source: Self.scrollObserverJS,
             injectionTime: .atDocumentEnd,
@@ -36,6 +44,7 @@ struct ArticleWebView: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.allowsBackForwardNavigationGestures = true
         webView.navigationDelegate = context.coordinator
+        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         context.coordinator.currentURL = url
         webView.load(URLRequest(url: url))
         return webView
@@ -43,6 +52,7 @@ struct ArticleWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
+        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         if context.coordinator.currentURL != url {
             context.coordinator.currentURL = url
             DispatchQueue.main.async { scrollProgress = 0 }
@@ -172,6 +182,17 @@ struct ArticleWebView: NSViewRepresentable {
             border: 1px solid #ccc !important;
         }
     }
+    """
+
+    // MARK: - Color Scheme Meta Tag
+
+    private static let colorSchemeMetaJS = """
+    (function() {
+        var meta = document.createElement('meta');
+        meta.name = 'color-scheme';
+        meta.content = 'light dark';
+        document.head.appendChild(meta);
+    })();
     """
 
     // MARK: - Scroll Observer
