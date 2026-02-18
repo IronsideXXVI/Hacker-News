@@ -78,6 +78,16 @@ struct DetailView: View {
                     .pickerStyle(.segmented)
                 }
             }
+            ToolbarItem(placement: .automatic) {
+                if authManager.isLoggedIn {
+                    Button {
+                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
+                    } label: {
+                        Text("Submit")
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
             ToolbarItemGroup(placement: .automatic) {
                 if authManager.isLoggedIn {
                     Button {
@@ -90,17 +100,6 @@ struct DetailView: View {
                     }
                 } else {
                     Button("Login") { showingLoginSheet = true }
-                }
-            }
-            ToolbarSpacer(.fixed)
-            ToolbarItem(placement: .automatic) {
-                if authManager.isLoggedIn {
-                    Button {
-                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
-                    } label: {
-                        Text("Submit")
-                            .foregroundStyle(.primary)
-                    }
                 }
             }
         }
