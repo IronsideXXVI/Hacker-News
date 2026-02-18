@@ -74,13 +74,14 @@ struct DetailView: View {
             }
             ToolbarSpacer(.fixed)
             ToolbarItem(placement: .navigation) {
-                Picker("View", selection: $viewModel.preferArticleView) {
-                    Text("Posts").tag(true)
-                    Text("Comments").tag(false)
+                if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" {
+                    Picker("View", selection: $viewModel.preferArticleView) {
+                        Text("Post").tag(true)
+                        Text("Comments").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 180)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 180)
-                .disabled(viewModel.selectedStory == nil || viewModel.viewingUserProfileURL != nil || viewModel.selectedStory?.type == "comment")
             }
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
