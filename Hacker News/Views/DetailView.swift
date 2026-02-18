@@ -36,7 +36,7 @@ struct DetailView: View {
         .onChange(of: viewModel.preferArticleView) { scrollProgress = 0 }
         .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0 }
         .toolbar {
-            ToolbarItem(placement: .navigation) {
+            ToolbarItemGroup(placement: .navigation) {
                 Button {
                     viewModel.webRefreshID = UUID()
                     Task { await viewModel.loadFeed() }
@@ -45,8 +45,6 @@ struct DetailView: View {
                         .imageScale(.medium)
                 }
                 .help("Refresh")
-            }
-            ToolbarItem(placement: .navigation) {
                 Button {
                     viewModel.selectedStory = nil
                     viewModel.viewingUserProfileURL = nil
@@ -55,8 +53,6 @@ struct DetailView: View {
                         .imageScale(.medium)
                 }
                 .help("Home")
-            }
-            ToolbarItem(placement: .navigation) {
                 if let url = currentExternalURL {
                     ShareLink(item: url) {
                         Image(systemName: "square.and.arrow.up")
@@ -64,8 +60,6 @@ struct DetailView: View {
                     }
                     .help("Share")
                 }
-            }
-            ToolbarItem(placement: .navigation) {
                 if currentExternalURL != nil {
                     Button {
                         if let url = currentExternalURL {
@@ -78,9 +72,10 @@ struct DetailView: View {
                     .help("Open in Browser")
                 }
             }
-            ToolbarItem(placement: .automatic) {
+            ToolbarSpacer(.fixed)
+            ToolbarItem(placement: .navigation) {
                 Picker("View", selection: $viewModel.preferArticleView) {
-                    Text("Article").tag(true)
+                    Text("Posts").tag(true)
                     Text("Comments").tag(false)
                 }
                 .pickerStyle(.segmented)
