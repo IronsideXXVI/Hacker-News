@@ -6,12 +6,26 @@ final class FeedViewModel {
     var stories: [HNItem] = []
     var selectedStory: HNItem? {
         didSet {
-            if selectedStory != nil { viewingUserProfileURL = nil }
+            if selectedStory != nil {
+                viewingUserProfileURL = nil
+                showingSettings = false
+            }
         }
     }
     var viewingUserProfileURL: URL? {
         didSet {
-            if viewingUserProfileURL != nil { selectedStory = nil }
+            if viewingUserProfileURL != nil {
+                selectedStory = nil
+                showingSettings = false
+            }
+        }
+    }
+    var showingSettings = false {
+        didSet {
+            if showingSettings {
+                selectedStory = nil
+                viewingUserProfileURL = nil
+            }
         }
     }
     var webRefreshID = UUID()

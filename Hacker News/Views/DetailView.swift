@@ -8,7 +8,9 @@ struct DetailView: View {
 
     var body: some View {
         Group {
-            if let profileURL = viewModel.viewingUserProfileURL {
+            if viewModel.showingSettings {
+                SettingsView()
+            } else if let profileURL = viewModel.viewingUserProfileURL {
                 VStack(spacing: 0) {
                     scrollProgressBar()
                     ArticleWebView(url: profileURL, scrollProgress: $scrollProgress)
@@ -100,6 +102,12 @@ struct DetailView: View {
                 } else {
                     Button("Login") { showingLoginSheet = true }
                 }
+            }
+            ToolbarItem(placement: .automatic) {
+                Button { viewModel.showingSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }
+                .help("Settings")
             }
         }
         .sheet(isPresented: $showingLoginSheet) {
