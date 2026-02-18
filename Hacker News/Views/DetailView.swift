@@ -42,7 +42,6 @@ struct DetailView: View {
                     Task { await viewModel.loadFeed() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
-                        .imageScale(.medium)
                 }
                 .help("Refresh")
                 Button {
@@ -50,13 +49,11 @@ struct DetailView: View {
                     viewModel.viewingUserProfileURL = nil
                 } label: {
                     Image(systemName: "house")
-                        .imageScale(.medium)
                 }
                 .help("Home")
                 if let url = currentExternalURL {
                     ShareLink(item: url) {
                         Image(systemName: "square.and.arrow.up")
-                            .imageScale(.medium)
                     }
                     .help("Share")
                 }
@@ -67,7 +64,6 @@ struct DetailView: View {
                         }
                     } label: {
                         Image(systemName: "safari")
-                            .imageScale(.medium)
                     }
                     .help("Open in Browser")
                 }
@@ -82,36 +78,18 @@ struct DetailView: View {
                     .pickerStyle(.segmented)
                 }
             }
-            ToolbarItem(placement: .automatic) {
+            ToolbarItemGroup(placement: .automatic) {
                 if authManager.isLoggedIn {
                     Button {
                         viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)")
                     } label: {
                         Text("\(authManager.username) (\(authManager.karma))")
-                            .foregroundStyle(.primary)
                     }
-                    .buttonStyle(.plain)
-                    .onHover { hovering in
-                        if hovering {
-                            NSCursor.pointingHand.push()
-                        } else {
-                            NSCursor.pop()
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                }
-            }
-            ToolbarItem(placement: .automatic) {
-                if authManager.isLoggedIn {
                     Button("Logout") {
                         Task { await authManager.logout() }
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 8)
                 } else {
                     Button("Login") { showingLoginSheet = true }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 8)
                 }
             }
             ToolbarSpacer(.fixed)
@@ -123,8 +101,6 @@ struct DetailView: View {
                         Text("Submit")
                             .foregroundStyle(.primary)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 8)
                 }
             }
         }
