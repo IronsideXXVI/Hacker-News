@@ -68,7 +68,6 @@ struct DetailView: View {
                     .help("Open in Browser")
                 }
             }
-            ToolbarSpacer(.fixed)
             ToolbarItem(placement: .navigation) {
                 if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" {
                     Picker("View", selection: $viewModel.preferArticleView) {
