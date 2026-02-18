@@ -15,6 +15,7 @@ struct ContentView: View {
             DetailView(viewModel: viewModel, authManager: authManager)
         }
         .task {
+            await authManager.restoreSession()
             await viewModel.loadFeed()
         }
         .frame(minWidth: 900, minHeight: 600)

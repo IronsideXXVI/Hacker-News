@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import WebKit
 import Observation
 
@@ -22,6 +23,7 @@ final class HNAuthManager {
             await injectCookie(cookie)
             let user = try await HNService.fetchUser(id: username)
 
+            saveToKeychain(cookieValue: cookie.value, username: user.id)
             self.username = user.id
             self.karma = user.karma
             self.isLoggedIn = true
@@ -43,6 +45,7 @@ final class HNAuthManager {
             await injectCookie(cookie)
             let user = try await HNService.fetchUser(id: username)
 
+            saveToKeychain(cookieValue: cookie.value, username: user.id)
             self.username = user.id
             self.karma = user.karma
             self.isLoggedIn = true
@@ -63,6 +66,7 @@ final class HNAuthManager {
             await cookieStore.deleteCookie(cookie)
         }
 
+        deleteFromKeychain()
         isLoggedIn = false
         username = ""
         karma = 0
@@ -105,6 +109,78 @@ final class HNAuthManager {
         }
 
         isResettingPassword = false
+    }
+
+    func restoreSession() async {
+        guard let stored = loadFromKeychain() else { return }
+
+        let cookieProperties: [HTTPCookiePropertyKey: Any] = [
+            .name: "user",
+            .value: stored.cookieValue,
+            .domain: ".news.ycombinator.com",
+            .path: "/",
+        ]
+        guard let cookie = HTTPCookie(properties: cookieProperties) else { return }
+
+        await injectCookie(cookie)
+
+        do {
+            let user = try await HNService.fetchUser(id: stored.username)
+            self.username = user.id
+            self.karma = user.karma
+            self.isLoggedIn = true
+        } catch {
+            deleteFromKeychain()
+        }
+    }
+
+    // MARK: - Keychain
+
+    private static let keychainService = "com.hackernews.session"
+    private static let keychainAccount = "userCookie"
+
+    private func saveToKeychain(cookieValue: String, username: String) {
+        deleteFromKeychain()
+
+        let payload: [String: String] = ["cookie": cookieValue, "username": username]
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: Self.keychainAccount,
+            kSecValueData as String: data,
+        ]
+        SecItemAdd(query as CFDictionary, nil)
+    }
+
+    private func loadFromKeychain() -> (cookieValue: String, username: String)? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: Self.keychainAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+
+        guard let payload = try? JSONDecoder().decode([String: String].self, from: data),
+              let cookie = payload["cookie"],
+              let username = payload["username"] else { return nil }
+
+        return (cookie, username)
+    }
+
+    private func deleteFromKeychain() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: Self.keychainAccount,
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     private func fetchFnid() async throws -> String {
