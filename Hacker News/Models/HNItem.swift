@@ -11,6 +11,12 @@ struct HNItem: Codable, Identifiable, Hashable {
     let descendants: Int?
     let kids: [Int]?
     let text: String?
+    var storyTitle: String? = nil
+    var storyID: Int? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case id, type, by, time, url, title, score, descendants, kids, text
+    }
 
     var displayURL: URL? {
         guard let url else { return nil }
@@ -33,5 +39,18 @@ struct HNItem: Codable, Identifiable, Hashable {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return formatter.localizedString(for: date, relativeTo: .now)
+    }
+}
+
+extension String {
+    func strippingHTML() -> String {
+        self.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#x27;", with: "'")
+            .replacingOccurrences(of: "&#x2F;", with: "/")
+            .replacingOccurrences(of: "&nbsp;", with: " ")
     }
 }

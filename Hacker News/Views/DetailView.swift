@@ -85,7 +85,7 @@ struct DetailView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 180)
-                .disabled(viewModel.selectedStory == nil || viewModel.viewingUserProfileURL != nil)
+                .disabled(viewModel.selectedStory == nil || viewModel.viewingUserProfileURL != nil || viewModel.selectedStory?.type == "comment")
             }
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
@@ -157,43 +157,80 @@ struct DetailView: View {
     @ViewBuilder
     private func storyInfoBar(for story: HNItem) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(story.title ?? "Untitled")
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                if let domain = story.displayDomain {
-                    Text("(\(domain))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            HStack(spacing: 4) {
-                if let score = story.score {
-                    Text("\(score) points")
-                }
-                if let by = story.by {
-                    Text("by")
-                    Text(by)
-                        .foregroundStyle(.orange)
-                        .onHover { hovering in
-                            if hovering {
-                                NSCursor.pointingHand.push()
-                            } else {
-                                NSCursor.pop()
+            if story.type == "comment" {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    if let by = story.by {
+                        Text("Comment by")
+                            .font(.body)
+                            .fontWeight(.medium)
+                        Text(by)
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.orange)
+                            .onHover { hovering in
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
                             }
-                        }
-                        .onTapGesture {
-                            viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(by)")
-                        }
+                            .onTapGesture {
+                                viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(by)")
+                            }
+                    }
+                    if let storyTitle = story.storyTitle {
+                        Text("on:")
+                            .font(.body)
+                        Text(storyTitle)
+                            .font(.body)
+                            .lineLimit(1)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                Text(story.timeAgo)
-                if let descendants = story.descendants {
-                    Text("| \(descendants) comments")
+                HStack(spacing: 4) {
+                    Text(story.timeAgo)
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(story.title ?? "Untitled")
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    if let domain = story.displayDomain {
+                        Text("(\(domain))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack(spacing: 4) {
+                    if let score = story.score {
+                        Text("\(score) points")
+                    }
+                    if let by = story.by {
+                        Text("by")
+                        Text(by)
+                            .foregroundStyle(.orange)
+                            .onHover { hovering in
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                            .onTapGesture {
+                                viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(by)")
+                            }
+                    }
+                    Text(story.timeAgo)
+                    if let descendants = story.descendants {
+                        Text("| \(descendants) comments")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -204,7 +241,10 @@ struct DetailView: View {
 
     @ViewBuilder
     private func articleOrCommentsView(for story: HNItem) -> some View {
-        if viewModel.preferArticleView, let articleURL = story.displayURL {
+        if story.type == "comment" {
+            ArticleWebView(url: story.commentsURL, scrollProgress: $scrollProgress)
+                .id(viewModel.webRefreshID)
+        } else if viewModel.preferArticleView, let articleURL = story.displayURL {
             ArticleWebView(url: articleURL, scrollProgress: $scrollProgress)
                 .id(viewModel.webRefreshID)
         } else {

@@ -17,17 +17,26 @@ final class FeedViewModel {
     var webRefreshID = UUID()
     var searchQuery: String = ""
     var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
-    var currentFeed: HNFeedType = .top
     var isLoading = false
     var errorMessage: String?
+
+    var contentType: HNContentType = .frontPage {
+        didSet {
+            if oldValue != contentType { resetAndReload() }
+        }
+    }
+    var dateRange: HNDateRange = .today {
+        didSet {
+            if oldValue != dateRange { resetAndReload() }
+        }
+    }
 
     var preferArticleView: Bool {
         didSet { UserDefaults.standard.set(preferArticleView, forKey: "preferArticleView") }
     }
 
-    private var allStoryIDs: [Int] = []
-    private var loadedCount = 0
-    private let batchSize = 30
+    private var currentPage = 0
+    private var hasMore = false
     private var isFetchingMore = false
 
     init() {
@@ -35,15 +44,17 @@ final class FeedViewModel {
     }
 
     func loadFeed() async {
-        guard currentFeed.hasStoryList else { return }
         isLoading = true
         errorMessage = nil
         stories = []
-        loadedCount = 0
+        currentPage = 0
+        hasMore = false
 
         do {
-            allStoryIDs = try await HNService.fetchStoryIDs(for: currentFeed)
-            await loadNextBatch()
+            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, page: 0)
+            stories = result.items
+            hasMore = result.hasMore
+            currentPage = 1
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -54,8 +65,18 @@ final class FeedViewModel {
         guard let index = stories.firstIndex(of: currentItem),
               index >= stories.count - 5,
               !isFetchingMore,
-              loadedCount < allStoryIDs.count else { return }
-        await loadNextBatch()
+              hasMore else { return }
+
+        isFetchingMore = true
+        do {
+            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, page: currentPage)
+            stories.append(contentsOf: result.items)
+            hasMore = result.hasMore
+            currentPage += 1
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isFetchingMore = false
     }
 
     func searchStories() async {
@@ -65,11 +86,9 @@ final class FeedViewModel {
         errorMessage = nil
         stories = []
         selectedStory = nil
-        allStoryIDs = []
-        loadedCount = 0
 
         do {
-            stories = try await HNService.searchStories(query: query)
+            stories = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -81,29 +100,11 @@ final class FeedViewModel {
         Task { await loadFeed() }
     }
 
-    func switchFeed(to feed: HNFeedType) {
-        guard feed != currentFeed else { return }
-        currentFeed = feed
+    private func resetAndReload() {
         selectedStory = nil
         stories = []
-        allStoryIDs = []
-        loadedCount = 0
+        currentPage = 0
+        hasMore = false
         Task { await loadFeed() }
-    }
-
-    private func loadNextBatch() async {
-        guard loadedCount < allStoryIDs.count else { return }
-        isFetchingMore = true
-        let end = min(loadedCount + batchSize, allStoryIDs.count)
-        let batchIDs = Array(allStoryIDs[loadedCount..<end])
-
-        do {
-            let items = try await HNService.fetchItems(ids: batchIDs)
-            stories.append(contentsOf: items)
-            loadedCount = end
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isFetchingMore = false
     }
 }

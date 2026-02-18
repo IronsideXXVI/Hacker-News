@@ -5,7 +5,21 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FeedToolbar(viewModel: viewModel)
+            HStack(spacing: 8) {
+                Picker("Type", selection: $viewModel.contentType) {
+                    ForEach(HNContentType.allCases) { type in
+                        Text(type.displayName).tag(type)
+                    }
+                }
+                Picker("Date", selection: $viewModel.dateRange) {
+                    ForEach(HNDateRange.allCases) { range in
+                        Text(range.displayName).tag(range)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
             Divider()
 
             Spacer().frame(height: 6)
@@ -34,11 +48,7 @@ struct SidebarView: View {
             Spacer().frame(height: 6)
             Divider()
 
-            if viewModel.currentFeed.hasStoryList {
-                storyListView
-            } else if let webURL = viewModel.currentFeed.webURL {
-                ArticleWebView(url: webURL)
-            }
+            storyListView
         }
     }
 
@@ -47,7 +57,7 @@ struct SidebarView: View {
             if viewModel.isLoading && viewModel.stories.isEmpty {
                 VStack {
                     Spacer()
-                    ProgressView("Loading stories...")
+                    ProgressView(viewModel.contentType.isComments ? "Loading comments..." : "Loading stories...")
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -67,14 +77,22 @@ struct SidebarView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 List(selection: $viewModel.selectedStory) {
-                    ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, story in
-                        StoryRowView(story: story, rank: index + 1) { username in
-                            viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
-                        }
-                        .tag(story)
-                            .onAppear {
-                                Task { await viewModel.loadMoreIfNeeded(currentItem: story) }
+                    ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, item in
+                        Group {
+                            if viewModel.contentType.isComments {
+                                CommentRowView(comment: item) { username in
+                                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
+                                }
+                            } else {
+                                StoryRowView(story: item, rank: index + 1) { username in
+                                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
+                                }
                             }
+                        }
+                        .tag(item)
+                        .onAppear {
+                            Task { await viewModel.loadMoreIfNeeded(currentItem: item) }
+                        }
                     }
 
                     if viewModel.isLoading && !viewModel.stories.isEmpty {

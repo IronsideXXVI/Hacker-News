@@ -1,54 +1,73 @@
 import Foundation
 
-enum HNFeedType: String, CaseIterable {
-    static var allCases: [HNFeedType] {
-        [.top, .new, .past, .comments, .ask, .show, .jobs]
-    }
-
-    case top
-    case new
-    case past
-    case comments
-    case ask
-    case show
+enum HNContentType: String, CaseIterable, Identifiable {
+    case frontPage
+    case stories
+    case askHN
+    case showHN
     case jobs
-    case submit
+    case comments
+
+    var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .top: "Hacker News"
-        case .new: "new"
-        case .past: "past"
-        case .comments: "comments"
-        case .ask: "ask"
-        case .show: "show"
-        case .jobs: "jobs"
-        case .submit: "submit"
+        case .frontPage: "Front Page"
+        case .stories: "Stories"
+        case .askHN: "Ask HN"
+        case .showHN: "Show HN"
+        case .jobs: "Jobs"
+        case .comments: "Comments"
         }
     }
 
-    var apiEndpoint: URL? {
-        let base = "https://hacker-news.firebaseio.com/v0/"
+    var algoliaTag: String {
         switch self {
-        case .top: return URL(string: base + "topstories.json")
-        case .new: return URL(string: base + "newstories.json")
-        case .ask: return URL(string: base + "askstories.json")
-        case .show: return URL(string: base + "showstories.json")
-        case .jobs: return URL(string: base + "jobstories.json")
-        case .past, .comments, .submit: return nil
+        case .frontPage: "front_page"
+        case .stories: "story"
+        case .askHN: "ask_hn"
+        case .showHN: "show_hn"
+        case .jobs: "job"
+        case .comments: "comment"
         }
     }
 
-    var webURL: URL? {
+    var isComments: Bool { self == .comments }
+}
+
+enum HNDateRange: String, CaseIterable, Identifiable {
+    case today
+    case pastWeek
+    case pastMonth
+    case pastYear
+    case allTime
+
+    var id: String { rawValue }
+
+    var displayName: String {
         switch self {
-        case .past: return URL(string: "https://news.ycombinator.com/front")
-        case .comments: return URL(string: "https://news.ycombinator.com/newcomments")
-        case .submit: return URL(string: "https://news.ycombinator.com/submit")
-        default: return nil
+        case .today: "Today"
+        case .pastWeek: "Past Week"
+        case .pastMonth: "Past Month"
+        case .pastYear: "Past Year"
+        case .allTime: "All Time"
         }
     }
 
-    var hasStoryList: Bool {
-        apiEndpoint != nil
+    var startTimestamp: Int? {
+        let now = Date()
+        let calendar = Calendar.current
+        switch self {
+        case .today:
+            return Int(calendar.startOfDay(for: now).timeIntervalSince1970)
+        case .pastWeek:
+            return Int((calendar.date(byAdding: .day, value: -7, to: now) ?? now).timeIntervalSince1970)
+        case .pastMonth:
+            return Int((calendar.date(byAdding: .month, value: -1, to: now) ?? now).timeIntervalSince1970)
+        case .pastYear:
+            return Int((calendar.date(byAdding: .year, value: -1, to: now) ?? now).timeIntervalSince1970)
+        case .allTime:
+            return nil
+        }
     }
 }
