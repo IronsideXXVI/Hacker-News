@@ -18,6 +18,7 @@ struct ArticleWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
+        config.applicationNameForUserAgent = "Version/18.3 Safari/605.1.15"
 
         let toolbarHideScript = WKUserScript(
             source: Self.cssInjectionJS(css: Self.toolbarHideCSS),
@@ -44,6 +45,7 @@ struct ArticleWebView: NSViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.allowsBackForwardNavigationGestures = true
         webView.navigationDelegate = context.coordinator
+        webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         context.coordinator.currentURL = url
         webView.load(URLRequest(url: url))
@@ -52,6 +54,7 @@ struct ArticleWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
+        webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         if context.coordinator.currentURL != url {
             context.coordinator.currentURL = url
