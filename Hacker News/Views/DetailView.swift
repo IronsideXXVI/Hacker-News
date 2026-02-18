@@ -80,22 +80,8 @@ struct DetailView: View {
                         Text("Comments").tag(false)
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 180)
                 }
             }
-            ToolbarItem(placement: .automatic) {
-                if authManager.isLoggedIn {
-                    Button {
-                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
-                    } label: {
-                        Text("Submit")
-                            .foregroundStyle(.primary)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 8)
-                }
-            }
-            ToolbarSpacer(.fixed)
             ToolbarItem(placement: .automatic) {
                 if authManager.isLoggedIn {
                     Button {
@@ -126,6 +112,19 @@ struct DetailView: View {
                     Button("Login") { showingLoginSheet = true }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 8)
+                }
+            }
+            ToolbarSpacer(.fixed)
+            ToolbarItem(placement: .automatic) {
+                if authManager.isLoggedIn {
+                    Button {
+                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
+                    } label: {
+                        Text("Submit")
+                            .foregroundStyle(.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 8)
                 }
             }
         }
