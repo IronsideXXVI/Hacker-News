@@ -6,15 +6,17 @@ struct ArticleWebView: NSViewRepresentable {
     let adBlockingEnabled: Bool
     let popUpBlockingEnabled: Bool
     @Binding var scrollProgress: Double
+    @Binding var isLoading: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, scrollProgress: Binding<Double> = .constant(0)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
         self._scrollProgress = scrollProgress
+        self._isLoading = isLoading
     }
 
     // MARK: - Ad Block Rules
@@ -277,6 +279,7 @@ struct ArticleWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            DispatchQueue.main.async { self.parent.isLoading = false }
             webView.evaluateJavaScript(ArticleWebView.scrollObserverJS, completionHandler: nil)
 
             guard let host = webView.url?.host, host.contains("ycombinator.com") else { return }
@@ -291,6 +294,14 @@ struct ArticleWebView: NSViewRepresentable {
                 let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
                 webView.evaluateJavaScript(formJS, completionHandler: nil)
             }
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            DispatchQueue.main.async { self.parent.isLoading = false }
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            DispatchQueue.main.async { self.parent.isLoading = false }
         }
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
