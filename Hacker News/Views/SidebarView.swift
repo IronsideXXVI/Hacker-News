@@ -11,16 +11,19 @@ struct SidebarView: View {
                         Text(type.displayName).tag(type)
                     }
                 }
+                .labelsHidden()
                 Picker("Sort", selection: $viewModel.displaySort) {
                     ForEach(HNDisplaySort.allCases) { sort in
                         Text(sort.displayName).tag(sort)
                     }
                 }
+                .labelsHidden()
                 Picker("Date", selection: $viewModel.dateRange) {
                     ForEach(HNDateRange.allCases) { range in
                         Text(range.displayName).tag(range)
                     }
                 }
+                .labelsHidden()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
