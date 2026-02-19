@@ -7,16 +7,18 @@ struct ArticleWebView: NSViewRepresentable {
     let popUpBlockingEnabled: Bool
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
+    @Binding var loadError: String?
     @Environment(\.colorScheme) private var colorScheme
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
+        self._loadError = loadError
     }
 
     // MARK: - Ad Block Rules
@@ -279,7 +281,10 @@ struct ArticleWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            DispatchQueue.main.async { self.parent.isLoading = false }
+            DispatchQueue.main.async {
+                self.parent.loadError = nil
+                self.parent.isLoading = false
+            }
             webView.evaluateJavaScript(ArticleWebView.scrollObserverJS, completionHandler: nil)
 
             guard let host = webView.url?.host, host.contains("ycombinator.com") else { return }
@@ -297,11 +302,17 @@ struct ArticleWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async { self.parent.isLoading = false }
+            DispatchQueue.main.async {
+                self.parent.loadError = error.localizedDescription
+                self.parent.isLoading = false
+            }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async { self.parent.isLoading = false }
+            DispatchQueue.main.async {
+                self.parent.loadError = error.localizedDescription
+                self.parent.isLoading = false
+            }
         }
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
