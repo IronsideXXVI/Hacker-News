@@ -23,7 +23,7 @@ enum HNContentType: String, CaseIterable, Identifiable {
 
     var algoliaTag: String? {
         switch self {
-        case .all: nil
+        case .all: "(story,job,poll)"
         case .askHN: "ask_hn"
         case .showHN: "show_hn"
         case .jobs: "job"
