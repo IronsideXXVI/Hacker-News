@@ -54,7 +54,22 @@ struct SidebarView: View {
 
     private var storyListView: some View {
         Group {
-            if viewModel.isLoading && viewModel.stories.isEmpty {
+            if viewModel.contentType.isBookmarks && viewModel.stories.isEmpty && !viewModel.isSearchActive {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "bookmark")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.tertiary)
+                    Text("No Bookmarks")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    Text("Bookmark stories to save them here.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else if viewModel.isLoading && viewModel.stories.isEmpty {
                 VStack {
                     Spacer()
                     ProgressView(viewModel.contentType.isComments ? "Loading comments..." : "Loading stories...")
@@ -79,7 +94,7 @@ struct SidebarView: View {
                 List(selection: $viewModel.selectedStory) {
                     ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, item in
                         Group {
-                            if viewModel.contentType.isComments {
+                            if item.type == "comment" {
                                 CommentRowView(comment: item) { username in
                                     viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
                                 }

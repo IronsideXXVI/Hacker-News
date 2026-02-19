@@ -15,7 +15,7 @@ struct HNItem: Codable, Identifiable, Hashable {
     var storyID: Int? = nil
 
     enum CodingKeys: String, CodingKey {
-        case id, type, by, time, url, title, score, descendants, kids, text
+        case id, type, by, time, url, title, score, descendants, kids, text, storyTitle, storyID
     }
 
     var displayURL: URL? {

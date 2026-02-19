@@ -53,6 +53,14 @@ struct DetailView: View {
                     Image(systemName: "house")
                 }
                 .help("Home")
+                if let story = viewModel.selectedStory {
+                    Button {
+                        viewModel.toggleBookmark(story)
+                    } label: {
+                        Image(systemName: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
+                    }
+                    .help(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Add Bookmark")
+                }
                 if let url = currentExternalURL {
                     ShareLink(item: url) {
                         Image(systemName: "square.and.arrow.up")

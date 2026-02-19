@@ -7,6 +7,7 @@ enum HNContentType: String, CaseIterable, Identifiable {
     case showHN
     case jobs
     case comments
+    case bookmarks
 
     var id: String { rawValue }
 
@@ -18,6 +19,7 @@ enum HNContentType: String, CaseIterable, Identifiable {
         case .showHN: "Show HN"
         case .jobs: "Jobs"
         case .comments: "Comments"
+        case .bookmarks: "Bookmarks"
         }
     }
 
@@ -29,10 +31,12 @@ enum HNContentType: String, CaseIterable, Identifiable {
         case .showHN: "show_hn"
         case .jobs: "job"
         case .comments: "comment"
+        case .bookmarks: ""
         }
     }
 
     var isComments: Bool { self == .comments }
+    var isBookmarks: Bool { self == .bookmarks }
 }
 
 enum HNDateRange: String, CaseIterable, Identifiable {
