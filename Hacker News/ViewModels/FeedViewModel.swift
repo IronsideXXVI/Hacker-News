@@ -34,9 +34,14 @@ final class FeedViewModel {
     var isLoading = false
     var errorMessage: String?
 
-    var contentType: HNContentType = .frontPage {
+    var contentType: HNContentType = .all {
         didSet {
             if oldValue != contentType { resetAndReload() }
+        }
+    }
+    var displaySort: HNDisplaySort = .hot {
+        didSet {
+            if oldValue != displaySort { resetAndReload() }
         }
     }
     var dateRange: HNDateRange = .today {
@@ -120,7 +125,7 @@ final class FeedViewModel {
         hasMore = false
 
         do {
-            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, page: 0)
+            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: 0)
             stories = result.items
             hasMore = result.hasMore
             currentPage = 1
@@ -139,7 +144,7 @@ final class FeedViewModel {
 
         isFetchingMore = true
         do {
-            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, page: currentPage)
+            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: currentPage)
             stories.append(contentsOf: result.items)
             hasMore = result.hasMore
             currentPage += 1
@@ -170,7 +175,7 @@ final class FeedViewModel {
         selectedStory = nil
 
         do {
-            stories = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange)
+            stories = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange, displaySort: displaySort)
         } catch {
             errorMessage = error.localizedDescription
         }

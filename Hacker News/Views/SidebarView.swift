@@ -6,9 +6,14 @@ struct SidebarView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Picker("Type", selection: $viewModel.contentType) {
+                Picker("Content", selection: $viewModel.contentType) {
                     ForEach(HNContentType.allCases) { type in
                         Text(type.displayName).tag(type)
+                    }
+                }
+                Picker("Sort", selection: $viewModel.displaySort) {
+                    ForEach(HNDisplaySort.allCases) { sort in
+                        Text(sort.displayName).tag(sort)
                     }
                 }
                 Picker("Date", selection: $viewModel.dateRange) {
@@ -72,7 +77,7 @@ struct SidebarView: View {
             } else if viewModel.isLoading && viewModel.stories.isEmpty {
                 VStack {
                     Spacer()
-                    ProgressView(viewModel.contentType.isComments ? "Loading comments..." : "Loading stories...")
+                    ProgressView(viewModel.contentType.isComments ? "Loading comments..." : viewModel.contentType.isAll ? "Loading feed..." : "Loading stories...")
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)

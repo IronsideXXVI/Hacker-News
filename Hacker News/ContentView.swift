@@ -10,7 +10,7 @@ struct ContentView: View {
             columnVisibility: $columnVisibility
         ) {
             SidebarView(viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 350, ideal: 420, max: 550)
+                .navigationSplitViewColumnWidth(min: 300, ideal: 375, max: 375)
         } detail: {
             DetailView(viewModel: viewModel, authManager: authManager)
         }

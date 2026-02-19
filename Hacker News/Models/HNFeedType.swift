@@ -1,8 +1,7 @@
 import Foundation
 
 enum HNContentType: String, CaseIterable, Identifiable {
-    case frontPage
-    case stories
+    case all
     case askHN
     case showHN
     case jobs
@@ -13,28 +12,27 @@ enum HNContentType: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .frontPage: "Front Page"
-        case .stories: "Stories"
-        case .askHN: "Ask HN"
-        case .showHN: "Show HN"
+        case .all: "All"
+        case .askHN: "Ask"
+        case .showHN: "Show"
         case .jobs: "Jobs"
         case .comments: "Comments"
         case .bookmarks: "Bookmarks"
         }
     }
 
-    var algoliaTag: String {
+    var algoliaTag: String? {
         switch self {
-        case .frontPage: "front_page"
-        case .stories: "story"
+        case .all: nil
         case .askHN: "ask_hn"
         case .showHN: "show_hn"
         case .jobs: "job"
         case .comments: "comment"
-        case .bookmarks: ""
+        case .bookmarks: nil
         }
     }
 
+    var isAll: Bool { self == .all }
     var isComments: Bool { self == .comments }
     var isBookmarks: Bool { self == .bookmarks }
 }
@@ -43,7 +41,6 @@ enum HNDateRange: String, CaseIterable, Identifiable {
     case today
     case pastWeek
     case pastMonth
-    case pastYear
     case allTime
 
     var id: String { rawValue }
@@ -53,7 +50,6 @@ enum HNDateRange: String, CaseIterable, Identifiable {
         case .today: "Today"
         case .pastWeek: "Past Week"
         case .pastMonth: "Past Month"
-        case .pastYear: "Past Year"
         case .allTime: "All Time"
         }
     }
@@ -68,10 +64,29 @@ enum HNDateRange: String, CaseIterable, Identifiable {
             return Int((calendar.date(byAdding: .day, value: -7, to: now) ?? now).timeIntervalSince1970)
         case .pastMonth:
             return Int((calendar.date(byAdding: .month, value: -1, to: now) ?? now).timeIntervalSince1970)
-        case .pastYear:
-            return Int((calendar.date(byAdding: .year, value: -1, to: now) ?? now).timeIntervalSince1970)
         case .allTime:
             return nil
+        }
+    }
+}
+
+enum HNDisplaySort: String, CaseIterable, Identifiable {
+    case hot
+    case recent
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .hot: "Hot"
+        case .recent: "Recent"
+        }
+    }
+
+    var algoliaEndpoint: String {
+        switch self {
+        case .hot: "https://hn.algolia.com/api/v1/search"
+        case .recent: "https://hn.algolia.com/api/v1/search_by_date"
         }
     }
 }

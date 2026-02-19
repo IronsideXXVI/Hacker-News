@@ -18,19 +18,28 @@ struct AlgoliaHit: Codable {
     let comment_text: String?
     let story_title: String?
     let story_id: Int?
+    let _tags: [String]?
+
+    var inferredType: String {
+        guard let tags = _tags else { return "story" }
+        if tags.contains("comment") { return "comment" }
+        if tags.contains("job") { return "job" }
+        return "story"
+    }
 }
 
 struct HNService {
     private static let baseURL = "https://hacker-news.firebaseio.com/v0/"
-    private static let algoliaBaseURL = "https://hn.algolia.com/api/v1/search_by_date"
 
-    static func fetchFeed(contentType: HNContentType, dateRange: HNDateRange, page: Int = 0, hitsPerPage: Int = 30) async throws -> (items: [HNItem], hasMore: Bool) {
-        var components = URLComponents(string: algoliaBaseURL)!
+    static func fetchFeed(contentType: HNContentType, dateRange: HNDateRange, displaySort: HNDisplaySort, page: Int = 0, hitsPerPage: Int = 30) async throws -> (items: [HNItem], hasMore: Bool) {
+        var components = URLComponents(string: displaySort.algoliaEndpoint)!
         var queryItems = [
-            URLQueryItem(name: "tags", value: contentType.algoliaTag),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "hitsPerPage", value: String(hitsPerPage))
         ]
+        if let tag = contentType.algoliaTag {
+            queryItems.append(URLQueryItem(name: "tags", value: tag))
+        }
         if let timestamp = dateRange.startTimestamp {
             queryItems.append(URLQueryItem(name: "numericFilters", value: "created_at_i>\(timestamp)"))
         }
@@ -41,10 +50,10 @@ struct HNService {
 
         let items: [HNItem] = response.hits.compactMap { hit in
             guard let id = Int(hit.objectID) else { return nil }
-            let isComment = contentType.isComments
+            let type = contentType.isAll ? hit.inferredType : (contentType.isComments ? "comment" : "story")
             return HNItem(
                 id: id,
-                type: isComment ? "comment" : "story",
+                type: type,
                 by: hit.author,
                 time: hit.created_at_i,
                 url: hit.url,
@@ -52,7 +61,7 @@ struct HNService {
                 score: hit.points,
                 descendants: hit.num_comments,
                 kids: nil,
-                text: isComment ? hit.comment_text : hit.story_text,
+                text: type == "comment" ? hit.comment_text : hit.story_text,
                 storyTitle: hit.story_title,
                 storyID: hit.story_id
             )
@@ -60,12 +69,14 @@ struct HNService {
         return (items, page + 1 < response.nbPages)
     }
 
-    static func searchStories(query: String, contentType: HNContentType, dateRange: HNDateRange) async throws -> [HNItem] {
-        var components = URLComponents(string: "https://hn.algolia.com/api/v1/search")!
+    static func searchStories(query: String, contentType: HNContentType, dateRange: HNDateRange, displaySort: HNDisplaySort) async throws -> [HNItem] {
+        var components = URLComponents(string: displaySort.algoliaEndpoint)!
         var queryItems = [
-            URLQueryItem(name: "query", value: query),
-            URLQueryItem(name: "tags", value: contentType.algoliaTag)
+            URLQueryItem(name: "query", value: query)
         ]
+        if let tag = contentType.algoliaTag {
+            queryItems.append(URLQueryItem(name: "tags", value: tag))
+        }
         if let timestamp = dateRange.startTimestamp {
             queryItems.append(URLQueryItem(name: "numericFilters", value: "created_at_i>\(timestamp)"))
         }
@@ -73,12 +84,12 @@ struct HNService {
 
         let (data, _) = try await URLSession.shared.data(from: components.url!)
         let response = try JSONDecoder().decode(AlgoliaResponse.self, from: data)
-        let isComment = contentType.isComments
         return response.hits.compactMap { hit -> HNItem? in
             guard let id = Int(hit.objectID) else { return nil }
+            let type = contentType.isAll ? hit.inferredType : (contentType.isComments ? "comment" : "story")
             return HNItem(
                 id: id,
-                type: isComment ? "comment" : "story",
+                type: type,
                 by: hit.author,
                 time: hit.created_at_i,
                 url: hit.url,
@@ -86,7 +97,7 @@ struct HNService {
                 score: hit.points,
                 descendants: hit.num_comments,
                 kids: nil,
-                text: isComment ? hit.comment_text : hit.story_text,
+                text: type == "comment" ? hit.comment_text : hit.story_text,
                 storyTitle: hit.story_title,
                 storyID: hit.story_id
             )
