@@ -15,9 +15,22 @@
 		E0D8E4DE2F43C68E00BA2D5C /* HackerNews.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HackerNews.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		74B862AD5CD160AE53E9EE3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E0D8E4A22F43A35200BA2D5C /* Hacker News */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E0D8E4A52F43A35200BA2D5C /* Hacker News */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				74B862AD5CD160AE53E9EE3A /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
 			path = "Hacker News";
 			sourceTree = "<group>";
 		};
@@ -267,6 +280,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Hacker News/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Hacker News";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.magazines-and-newspapers";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -303,6 +317,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Hacker News/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Hacker News";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.magazines-and-newspapers";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
