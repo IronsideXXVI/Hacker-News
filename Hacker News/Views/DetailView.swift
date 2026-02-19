@@ -245,15 +245,15 @@ struct DetailView: View {
     }
 
     private var webLoadingOverlay: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .controlSize(.large)
-            Text("Loading...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.background)
+        Color(.windowBackgroundColor)
+            .overlay {
+                Color.gray
+                    .phaseAnimator([false, true]) { content, phase in
+                        content.opacity(phase ? 0.1 : 0.0)
+                    } animation: { _ in
+                        .easeInOut(duration: 1.5)
+                    }
+            }
     }
 
     @ViewBuilder
