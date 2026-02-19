@@ -15,7 +15,7 @@ struct DetailView: View {
                 VStack(spacing: 0) {
                     scrollProgressBar()
                     ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
-                        .id(viewModel.webRefreshID)
+                        .id("\(viewModel.webRefreshID)|\(profileURL)")
                 }
             } else if let story = viewModel.selectedStory {
                 VStack(spacing: 0) {
@@ -237,13 +237,13 @@ struct DetailView: View {
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if story.type == "comment" {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
-                .id(viewModel.webRefreshID)
+                .id("\(viewModel.webRefreshID)|\(story.commentsURL)")
         } else if viewModel.preferArticleView, let articleURL = story.displayURL {
             ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
-                .id(viewModel.webRefreshID)
+                .id("\(viewModel.webRefreshID)|\(articleURL)")
         } else {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress)
-                .id(viewModel.webRefreshID)
+                .id("\(viewModel.webRefreshID)|\(story.commentsURL)")
         }
     }
 

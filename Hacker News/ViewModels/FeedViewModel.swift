@@ -32,7 +32,10 @@ final class FeedViewModel {
     var searchQuery: String = ""
     var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
     var isLoading = false
+    var showLoadingIndicator = false
     var errorMessage: String?
+    private var currentLoadTask: Task<Void, Never>?
+    private var loadingIndicatorTask: Task<Void, Never>?
 
     var contentType: HNContentType = .all {
         didSet {
@@ -114,25 +117,32 @@ final class FeedViewModel {
     func loadFeed() async {
         if contentType.isBookmarks {
             stories = filteredBookmarks()
-            isLoading = false
+            finishLoading()
             return
         }
 
-        isLoading = true
-        errorMessage = nil
-        stories = []
-        currentPage = 0
-        hasMore = false
+        if !isLoading {
+            isLoading = true
+            errorMessage = nil
+            stories = []
+            currentPage = 0
+            hasMore = false
+            startLoadingIndicatorDelay()
+        }
 
         do {
             let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: 0)
+            guard !Task.isCancelled else { return }
             stories = result.items
             hasMore = result.hasMore
             currentPage = 1
+        } catch is CancellationError {
+            return
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
-        isLoading = false
+        finishLoading()
     }
 
     func loadMoreIfNeeded(currentItem: HNItem) async {
@@ -169,29 +179,63 @@ final class FeedViewModel {
             return
         }
 
+        currentLoadTask?.cancel()
+        loadingIndicatorTask?.cancel()
+
         isLoading = true
         errorMessage = nil
         stories = []
         selectedStory = nil
+        showLoadingIndicator = false
+        startLoadingIndicatorDelay()
 
         do {
-            stories = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange, displaySort: displaySort)
+            let results = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange, displaySort: displaySort)
+            guard !Task.isCancelled else { return }
+            stories = results
+        } catch is CancellationError {
+            return
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
-        isLoading = false
+        finishLoading()
     }
 
     func clearSearch() {
         searchQuery = ""
-        Task { await loadFeed() }
+        currentLoadTask?.cancel()
+        loadingIndicatorTask?.cancel()
+        currentLoadTask = Task { await loadFeed() }
+    }
+
+    private func startLoadingIndicatorDelay() {
+        loadingIndicatorTask?.cancel()
+        loadingIndicatorTask = Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            if isLoading { showLoadingIndicator = true }
+        }
+    }
+
+    private func finishLoading() {
+        isLoading = false
+        loadingIndicatorTask?.cancel()
+        showLoadingIndicator = false
     }
 
     private func resetAndReload() {
+        currentLoadTask?.cancel()
+
         selectedStory = nil
         stories = []
         currentPage = 0
         hasMore = false
-        Task { await loadFeed() }
+        isLoading = true
+        showLoadingIndicator = false
+        errorMessage = nil
+
+        startLoadingIndicatorDelay()
+        currentLoadTask = Task { await loadFeed() }
     }
 }

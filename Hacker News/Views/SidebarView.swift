@@ -77,7 +77,7 @@ struct SidebarView: View {
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
-            } else if viewModel.isLoading && viewModel.stories.isEmpty {
+            } else if viewModel.showLoadingIndicator && viewModel.stories.isEmpty {
                 VStack {
                     Spacer()
                     ProgressView(viewModel.contentType.isComments ? "Loading comments..." : viewModel.contentType.isAll ? "Loading feed..." : "Loading stories...")
