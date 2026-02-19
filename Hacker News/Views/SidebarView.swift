@@ -35,7 +35,7 @@ struct SidebarView: View {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField("Search stories...", text: $viewModel.searchQuery)
+                TextField("Search...", text: $viewModel.searchQuery)
                     .textFieldStyle(.plain)
                     .onSubmit {
                         Task { await viewModel.searchStories() }
