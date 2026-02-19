@@ -9,9 +9,11 @@ struct ContentView: View {
         NavigationSplitView(
             columnVisibility: $columnVisibility
         ) {
-            SidebarView(viewModel: viewModel)
-                .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 500)
-                .toolbar(removing: .sidebarToggle)
+            Group {
+                SidebarView(viewModel: viewModel)
+                    .toolbar(removing: .sidebarToggle)
+            }
+            .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 375)
         } detail: {
             DetailView(viewModel: viewModel, authManager: authManager, columnVisibility: $columnVisibility)
         }
