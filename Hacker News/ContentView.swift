@@ -11,8 +11,9 @@ struct ContentView: View {
         ) {
             SidebarView(viewModel: viewModel)
                 .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 500)
+                .toolbar(removing: .sidebarToggle)
         } detail: {
-            DetailView(viewModel: viewModel, authManager: authManager)
+            DetailView(viewModel: viewModel, authManager: authManager, columnVisibility: $columnVisibility)
         }
         .task {
             await authManager.restoreSession()

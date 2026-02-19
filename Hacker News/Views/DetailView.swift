@@ -3,6 +3,7 @@ import SwiftUI
 struct DetailView: View {
     @Bindable var viewModel: FeedViewModel
     var authManager: HNAuthManager
+    @Binding var columnVisibility: NavigationSplitViewVisibility
     @State private var showingLoginSheet = false
     @State private var scrollProgress: Double = 0.0
 
@@ -38,6 +39,17 @@ struct DetailView: View {
         .onChange(of: viewModel.preferArticleView) { scrollProgress = 0 }
         .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0 }
         .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    withAnimation {
+                        columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+                    }
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                }
+                .help("Toggle Sidebar")
+                .keyboardShortcut("s", modifiers: [.command, .control])
+            }
             ToolbarItemGroup(placement: .navigation) {
                 Button {
                     viewModel.webRefreshID = UUID()
