@@ -57,5 +57,6 @@ struct StoryRowView: View {
             .padding(.leading, 30)
         }
         .padding(.vertical, 2)
+        .frame(height: 54, alignment: .center)
     }
 }
