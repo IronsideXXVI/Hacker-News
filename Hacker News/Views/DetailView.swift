@@ -39,7 +39,7 @@ struct DetailView: View {
         .onChange(of: viewModel.preferArticleView) { scrollProgress = 0 }
         .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0 }
         .toolbar {
-            ToolbarItem(placement: .navigation) {
+            ToolbarItemGroup(placement: .navigation) {
                 Button {
                     withAnimation {
                         columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
@@ -49,8 +49,6 @@ struct DetailView: View {
                 }
                 .help("Toggle Sidebar")
                 .keyboardShortcut("s", modifiers: [.command, .control])
-            }
-            ToolbarItemGroup(placement: .navigation) {
                 Button {
                     viewModel.webRefreshID = UUID()
                     Task { await viewModel.loadFeed() }
