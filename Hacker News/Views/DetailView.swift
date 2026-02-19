@@ -249,7 +249,7 @@ struct DetailView: View {
             .overlay {
                 Color.gray
                     .phaseAnimator([false, true]) { content, phase in
-                        content.opacity(phase ? 0.1 : 0.0)
+                        content.opacity(phase ? 0.25 : 0.0)
                     } animation: { _ in
                         .easeInOut(duration: 1.5)
                     }
