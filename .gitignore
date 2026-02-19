@@ -21,6 +21,10 @@ Package.resolved
 # CocoaPods (if used)
 Pods/
 
+# Local build/release scripts
+export-options.plist
+scripts/
+
 # OS files
 .DS_Store
 *.swp
