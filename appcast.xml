@@ -7,15 +7,15 @@
     <language>en</language>
     <item>
       <title>Version 1.0</title>
-      <pubDate>Fri, 20 Feb 2026 20:51:19 +0000</pubDate>
+      <pubDate>Fri, 20 Feb 2026 20:56:49 +0000</pubDate>
       <sparkle:version>13</sparkle:version>
       <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/IronsideXXVI/Hacker-News/releases/download/v1.0.1/HackerNews-1.0.dmg"
-        length="2633447"
+        url="https://github.com/IronsideXXVI/Hacker-News/releases/download/v1.0.2/HackerNews-1.0.dmg"
+        length="2633481"
         type="application/octet-stream"
-        sparkle:edSignature="lNFzL9+RjGIyYBNznOxAYfekCO9oNgpcDOikuoZvQ53pKkxjIlZ5Hd2F0q44o/wd0yWrL5sip77qLpSAZpMmAQ=="
+        sparkle:edSignature="lXYsLNb9vlok1cMmNiYrA5flwk+ZyRayKbcy+Ma1f8xcs39vA/KblmuW8eYXbKEsUDZ/wXBgz6T0uhyhvSb0Ag=="
       />
     </item>
   </channel>
