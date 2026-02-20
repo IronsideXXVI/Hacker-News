@@ -120,7 +120,7 @@ struct DetailView: View {
                 }
             }
             ToolbarItem(placement: .navigation) {
-                if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" {
+                if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" && viewModel.selectedStory?.displayURL != nil {
                     Picker("View", selection: $viewModel.preferArticleView) {
                         Text("Post").tag(true)
                         Text("Comments").tag(false)
