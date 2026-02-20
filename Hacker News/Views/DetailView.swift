@@ -75,6 +75,7 @@ struct DetailView: View {
                 Button {
                     viewModel.selectedStory = nil
                     viewModel.viewingUserProfileURL = nil
+                    viewModel.showingSettings = false
                 } label: {
                     Image(systemName: "house")
                 }
