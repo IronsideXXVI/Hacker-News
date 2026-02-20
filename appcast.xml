@@ -5,5 +5,18 @@
     <link>https://ironsidexxvi.github.io/Hacker-News/appcast.xml</link>
     <description>Most recent updates for Hacker News</description>
     <language>en</language>
+    <item>
+      <title>Version 1.0</title>
+      <pubDate>Fri, 20 Feb 2026 02:09:02 +0000</pubDate>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/IronsideXXVI/Hacker-News/releases/download/v1.0/HackerNews-1.0.dmg"
+        length="1285902"
+        type="application/octet-stream"
+        sparkle:edSignature="EzB8mSH9N8w6zPYIMP0aRiC2XWaoTwGj0AugRtcL0csAUoyLaWM39DV1xYeg3SjIFCELqpnC7zXe5SdPGMY1CQ=="
+      />
+    </item>
   </channel>
 </rss>
