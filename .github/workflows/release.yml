@@ -128,33 +128,15 @@ jobs:
           </plist>
           ENTEOF
 
-          # Sign Sparkle XPC services first (no sandbox - they need to run outside it)
+          # Sign the Sparkle framework and all its nested components (no sandbox)
           SPARKLE_FRAMEWORK="$APP_PATH/Contents/Frameworks/Sparkle.framework"
-          for xpc in "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/"*.xpc; do
-            codesign --force \
-              --sign "$SIGNING_IDENTITY" \
-              --timestamp \
-              --options runtime \
-              "$xpc"
-          done
-
-          # Sign Sparkle Autoupdate (if present)
-          if [ -d "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate.app" ]; then
-            codesign --force \
-              --sign "$SIGNING_IDENTITY" \
-              --timestamp \
-              --options runtime \
-              "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate.app"
-          fi
-
-          # Sign the Sparkle framework itself
-          codesign --force \
+          codesign --force --deep \
             --sign "$SIGNING_IDENTITY" \
             --timestamp \
             --options runtime \
             "$SPARKLE_FRAMEWORK"
 
-          # Sign the main app (with sandbox entitlements)
+          # Sign the main app only (with sandbox entitlements, no --deep)
           codesign --force \
             --sign "$SIGNING_IDENTITY" \
             --timestamp \
@@ -182,11 +164,22 @@ jobs:
           # Create a zip for notarization submission
           ditto -c -k --keepParent "$APP_PATH" $RUNNER_TEMP/app-for-notarization.zip
 
-          xcrun notarytool submit $RUNNER_TEMP/app-for-notarization.zip \
+          RESULT=$(xcrun notarytool submit $RUNNER_TEMP/app-for-notarization.zip \
             --key ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
             --key-id "$API_KEY_ID" \
             --issuer "$API_ISSUER_ID" \
-            --wait
+            --wait 2>&1)
+          echo "$RESULT"
+
+          if echo "$RESULT" | grep -q "status: Invalid"; then
+            SUBMISSION_ID=$(echo "$RESULT" | grep "id:" | head -1 | awk '{print $2}')
+            echo "::error::Notarization failed. Fetching log..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --key ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
+              --key-id "$API_KEY_ID" \
+              --issuer "$API_ISSUER_ID" 2>&1
+            exit 1
+          fi
 
           rm -f $RUNNER_TEMP/app-for-notarization.zip
 
