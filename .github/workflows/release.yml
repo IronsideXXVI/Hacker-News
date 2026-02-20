@@ -86,11 +86,9 @@ jobs:
             -archivePath $RUNNER_TEMP/app.xcarchive \
             -clonedSourcePackagesDirPath "$RUNNER_TEMP/packages" \
             -destination "generic/platform=macOS" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Developer ID Application" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
-            PROVISIONING_PROFILE_SPECIFIER="" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             -quiet
 
       # ── Step 2: Extract and re-sign with Developer ID ────────────────
