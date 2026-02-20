@@ -14,6 +14,7 @@ struct DetailView: View {
     @State private var minDelayMet = false
     @State private var minDelayTask: Task<Void, Never>?
     @State private var webViewProxy = WebViewProxy()
+    @State private var webViewID = UUID()
 
     var body: some View {
         Group {
@@ -25,7 +26,7 @@ struct DetailView: View {
                     if viewModel.showFindBar { findBar() }
                     ZStack {
                         ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                            .id(viewModel.webRefreshID)
+                            .id(webViewID)
                             .opacity(showContent ? 1 : 0)
                             .animation(.easeIn(duration: 0.2), value: showContent)
                         if !showContent {
@@ -71,6 +72,9 @@ struct DetailView: View {
         .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
         .onChange(of: isWebViewLoading) { if !isWebViewLoading && minDelayMet { showContent = true } }
         .onChange(of: minDelayMet) { if minDelayMet && !isWebViewLoading { showContent = true } }
+        .onChange(of: viewModel.webRefreshID) {
+            webViewID = UUID()
+        }
         .onChange(of: viewModel.showFindBar) {
             if !viewModel.showFindBar {
                 viewModel.findQuery = ""
@@ -83,6 +87,12 @@ struct DetailView: View {
         .onChange(of: viewModel.findPreviousTrigger) {
             webViewProxy.findPrevious(viewModel.findQuery)
         }
+        .onChange(of: viewModel.goBackTrigger) {
+            webViewProxy.goBack()
+        }
+        .onChange(of: viewModel.goForwardTrigger) {
+            webViewProxy.goForward()
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -94,8 +104,24 @@ struct DetailView: View {
                 }
                 .help("Toggle Sidebar")
                 .keyboardShortcut("s", modifiers: [.command, .control])
+                if webViewProxy.canGoBack || webViewProxy.canGoForward {
+                    Button {
+                        webViewProxy.goBack()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                    }
+                    .help("Back")
+                    .disabled(!webViewProxy.canGoBack)
+                    Button {
+                        webViewProxy.goForward()
+                    } label: {
+                        Image(systemName: "chevron.right")
+                    }
+                    .help("Forward")
+                    .disabled(!webViewProxy.canGoForward)
+                }
                 Button {
-                    viewModel.webRefreshID = UUID()
+                    webViewID = UUID()
                     Task { await viewModel.loadFeed() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
@@ -369,6 +395,7 @@ struct DetailView: View {
         showContent = false
         minDelayMet = false
         viewModel.showFindBar = false
+        webViewID = UUID()
         scheduleErrorReveal()
         minDelayTask?.cancel()
         minDelayTask = Task {
@@ -427,13 +454,13 @@ struct DetailView: View {
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if story.type == "comment" {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id(viewModel.webRefreshID)
+                .id(webViewID)
         } else if viewModel.preferArticleView, let articleURL = story.displayURL {
             ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id(viewModel.webRefreshID)
+                .id(webViewID)
         } else {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id(viewModel.webRefreshID)
+                .id(webViewID)
         }
     }
 

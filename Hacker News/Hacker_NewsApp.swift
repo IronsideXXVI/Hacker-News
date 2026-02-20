@@ -69,6 +69,16 @@ struct Hacker_NewsApp: App {
                 .disabled(!feedViewModel.showFindBar || feedViewModel.findQuery.isEmpty)
             }
             CommandGroup(after: .sidebar) {
+                Button("Back") {
+                    feedViewModel.goBackTrigger = UUID()
+                }
+                .keyboardShortcut("[", modifiers: .command)
+
+                Button("Forward") {
+                    feedViewModel.goForwardTrigger = UUID()
+                }
+                .keyboardShortcut("]", modifiers: .command)
+
                 Divider()
 
                 Button("Zoom In") {

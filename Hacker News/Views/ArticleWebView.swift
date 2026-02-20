@@ -3,9 +3,31 @@ import WebKit
 
 @Observable
 class WebViewProxy {
-    weak var webView: WKWebView?
+    weak var webView: WKWebView? {
+        didSet {
+            backForwardObservation?.invalidate()
+            guard let webView else {
+                canGoBack = false
+                canGoForward = false
+                return
+            }
+            backForwardObservation = webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] wv, _ in
+                DispatchQueue.main.async { self?.canGoBack = wv.canGoBack }
+            }
+            forwardObservation = webView.observe(\.canGoForward, options: [.initial, .new]) { [weak self] wv, _ in
+                DispatchQueue.main.async { self?.canGoForward = wv.canGoForward }
+            }
+        }
+    }
+    var canGoBack = false
+    var canGoForward = false
     var matchCount: Int = 0
     var currentMatch: Int = 0
+    private var backForwardObservation: NSKeyValueObservation?
+    private var forwardObservation: NSKeyValueObservation?
+
+    func goBack() { webView?.goBack() }
+    func goForward() { webView?.goForward() }
 
     private func escaped(_ text: String) -> String {
         text.replacingOccurrences(of: "\\", with: "\\\\")
