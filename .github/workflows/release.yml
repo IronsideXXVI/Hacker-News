@@ -1,0 +1,281 @@
+name: Build, Notarize & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  APP_NAME: "Hacker News"
+  SCHEME: "Hacker News"
+  PROJECT: "Hacker News.xcodeproj"
+  BUNDLE_ID: "com.IronsideXXVI.Hacker-News"
+  TEAM_ID: "69Y3X8R7D7"
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+
+      # ── Import Developer ID certificate ──────────────────────────────
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$P12_BASE64" | base64 --decode > $RUNNER_TEMP/cert.p12
+          security import $RUNNER_TEMP/cert.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+          rm $RUNNER_TEMP/cert.p12
+
+          # Allow codesign to use the keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Add to search list
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+      # ── Set up notarization credentials ──────────────────────────────
+      - name: Set up App Store Connect API key
+        env:
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+        run: |
+          mkdir -p ~/private_keys
+          echo "$API_KEY_CONTENT" > ~/private_keys/AuthKey_${API_KEY_ID}.p8
+
+      # ── Resolve packages ─────────────────────────────────────────────
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/packages"
+
+      # ── Archive ──────────────────────────────────────────────────────
+      - name: Archive
+        run: |
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/app.xcarchive \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/packages" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            OTHER_CODE_SIGN_FLAGS="--timestamp"
+
+      # ── Prepare .app ─────────────────────────────────────────────────
+      - name: Prepare app for distribution
+        run: |
+          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+
+          # Remove any embedded provisioning profile (not needed for Developer ID)
+          rm -f "$APP_PATH/Contents/embedded.provisionprofile"
+
+          # Re-sign to ensure proper Developer ID signature
+          codesign --force --deep --timestamp \
+            --options runtime \
+            --sign "Developer ID Application: Dylan Ironside ($TEAM_ID)" \
+            "$APP_PATH"
+
+          # Verify signature
+          codesign --verify --deep --strict "$APP_PATH"
+
+      # ── Notarize .app ────────────────────────────────────────────────
+      - name: Notarize app
+        env:
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+
+          # Create a zip for notarization
+          ditto -c -k --keepParent "$APP_PATH" $RUNNER_TEMP/app-for-notarization.zip
+
+          xcrun notarytool submit $RUNNER_TEMP/app-for-notarization.zip \
+            --key ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
+            --key-id "$API_KEY_ID" \
+            --issuer "$API_ISSUER_ID" \
+            --wait --timeout 600
+
+          # Staple
+          xcrun stapler staple "$APP_PATH"
+
+      # ── Create DMG ──────────────────────────────────────────────────
+      - name: Create DMG
+        run: |
+          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+          DMG_PATH="$RUNNER_TEMP/$APP_NAME.dmg"
+          STAGING="$RUNNER_TEMP/dmg-staging"
+
+          mkdir -p "$STAGING"
+          cp -R "$APP_PATH" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          # Create DMG
+          hdiutil create -volname "$APP_NAME" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "$DMG_PATH"
+
+          rm -rf "$STAGING"
+
+          echo "DMG_PATH=$DMG_PATH" >> $GITHUB_ENV
+
+      # ── Sign & notarize DMG ──────────────────────────────────────────
+      - name: Sign and notarize DMG
+        env:
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          codesign --force --timestamp \
+            --sign "Developer ID Application: Dylan Ironside ($TEAM_ID)" \
+            "$DMG_PATH"
+
+          xcrun notarytool submit "$DMG_PATH" \
+            --key ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
+            --key-id "$API_KEY_ID" \
+            --issuer "$API_ISSUER_ID" \
+            --wait --timeout 600
+
+          xcrun stapler staple "$DMG_PATH"
+
+      # ── Sparkle signature ────────────────────────────────────────────
+      - name: Generate Sparkle EdDSA signature
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Find sign_update in the resolved Sparkle package
+          SIGN_UPDATE=$(find "$RUNNER_TEMP/packages" -name "sign_update" -type f | head -1)
+
+          if [ -z "$SIGN_UPDATE" ]; then
+            echo "::error::Could not find sign_update tool in Sparkle package"
+            exit 1
+          fi
+
+          chmod +x "$SIGN_UPDATE"
+
+          # Generate signature
+          SIGNATURE=$("$SIGN_UPDATE" "$DMG_PATH" --ed-key-file <(echo "$SPARKLE_PRIVATE_KEY"))
+          echo "SPARKLE_SIGNATURE<<EOF" >> $GITHUB_ENV
+          echo "$SIGNATURE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          # Extract individual attributes for appcast
+          ED_SIGNATURE=$(echo "$SIGNATURE" | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
+          LENGTH=$(echo "$SIGNATURE" | grep -o 'length="[^"]*"' | cut -d'"' -f2)
+          echo "ED_SIGNATURE=$ED_SIGNATURE" >> $GITHUB_ENV
+          echo "DMG_LENGTH=$LENGTH" >> $GITHUB_ENV
+
+      # ── Extract version info ─────────────────────────────────────────
+      - name: Extract version info
+        run: |
+          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
+          BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Contents/Info.plist")
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=$BUILD" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      # ── Build appcast entry ──────────────────────────────────────────
+      - name: Build appcast.xml
+        run: |
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/$APP_NAME.dmg"
+          PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S %z")
+
+          cat > $RUNNER_TEMP/appcast.xml << APPCAST_EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>$APP_NAME</title>
+              <link>https://ironsidexxvi.github.io/Hacker-News/appcast.xml</link>
+              <description>Most recent updates for $APP_NAME</description>
+              <language>en</language>
+              <item>
+                <title>Version $APP_VERSION</title>
+                <pubDate>$PUB_DATE</pubDate>
+                <sparkle:version>$BUILD_NUMBER</sparkle:version>
+                <sparkle:shortVersionString>$APP_VERSION</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+                <enclosure
+                  url="$DOWNLOAD_URL"
+                  length="$DMG_LENGTH"
+                  type="application/octet-stream"
+                  sparkle:edSignature="$ED_SIGNATURE"
+                />
+              </item>
+            </channel>
+          </rss>
+          APPCAST_EOF
+
+      # ── Create GitHub Release ────────────────────────────────────────
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Rename DMG for release (no spaces in filename for cleaner URLs)
+          cp "$DMG_PATH" "$RUNNER_TEMP/Hacker-News-${APP_VERSION}.dmg"
+
+          gh release create "$TAG" \
+            "$RUNNER_TEMP/Hacker-News-${APP_VERSION}.dmg#Hacker News ${APP_VERSION}" \
+            --title "$APP_NAME $APP_VERSION" \
+            --generate-notes
+
+      # ── Deploy appcast to GitHub Pages ───────────────────────────────
+      - name: Deploy appcast to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch gh-pages
+          git fetch origin gh-pages || true
+
+          # Set up worktree for gh-pages
+          PAGES_DIR=$RUNNER_TEMP/gh-pages
+          git worktree add "$PAGES_DIR" gh-pages 2>/dev/null || {
+            git worktree add --detach "$PAGES_DIR"
+            cd "$PAGES_DIR"
+            git checkout --orphan gh-pages
+            git reset --hard
+            cd -
+          }
+
+          # Copy appcast
+          cp $RUNNER_TEMP/appcast.xml "$PAGES_DIR/appcast.xml"
+
+          # Commit and push
+          cd "$PAGES_DIR"
+          git add appcast.xml
+          git diff --cached --quiet && echo "No changes to appcast" && exit 0
+          git commit -m "Update appcast for $TAG"
+          git push origin gh-pages
+
+      # ── Cleanup ──────────────────────────────────────────────────────
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/build.keychain-db 2>/dev/null || true
+          rm -f ~/private_keys/AuthKey_*.p8
