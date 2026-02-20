@@ -109,7 +109,7 @@ jobs:
           xattr -cr "$APP_PATH"
 
           # Create entitlements for Developer ID distribution
-          cat > $RUNNER_TEMP/dist-entitlements.plist << 'ENTEOF'
+          cat > $RUNNER_TEMP/dist-entitlements.plist << ENTEOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
             "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -119,6 +119,11 @@ jobs:
               <true/>
               <key>com.apple.security.network.client</key>
               <true/>
+              <key>com.apple.security.temporary-exception.mach-lookup.global-name</key>
+              <array>
+                  <string>${BUNDLE_ID}-spks</string>
+                  <string>${BUNDLE_ID}-spki</string>
+              </array>
           </dict>
           </plist>
           ENTEOF

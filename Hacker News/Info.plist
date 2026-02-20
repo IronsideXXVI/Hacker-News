@@ -8,6 +8,8 @@
 	<string>DLv3S7N/rDSPpSI6qnix3fbOrI2FrP5++1iANLLOC8Q=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
