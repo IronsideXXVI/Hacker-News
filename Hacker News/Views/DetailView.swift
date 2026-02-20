@@ -8,6 +8,7 @@ struct DetailView: View {
     @State private var scrollProgress: Double = 0.0
     @State private var isWebViewLoading = true
     @State private var webLoadError: String?
+    @State private var showError = false
 
     var body: some View {
         Group {
@@ -18,10 +19,11 @@ struct DetailView: View {
                     scrollProgressBar()
                     ZStack {
                         ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                            .id("\(viewModel.webRefreshID)|\(profileURL)")
+                            .id(viewModel.webRefreshID)
                         if isWebViewLoading {
                             webLoadingOverlay
-                        } else if let error = webLoadError {
+                        }
+                        if showError, let error = webLoadError {
                             webErrorView(error: error, url: profileURL)
                         }
                     }
@@ -34,7 +36,8 @@ struct DetailView: View {
                         articleOrCommentsView(for: story)
                         if isWebViewLoading {
                             webLoadingOverlay
-                        } else if let error = webLoadError {
+                        }
+                        if showError, let error = webLoadError {
                             webErrorView(error: error, url: currentExternalURL)
                         }
                     }
@@ -51,9 +54,9 @@ struct DetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .onChange(of: viewModel.selectedStory) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil }
-        .onChange(of: viewModel.preferArticleView) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil }
-        .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil }
+        .onChange(of: viewModel.selectedStory) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil; showError = false; scheduleErrorReveal() }
+        .onChange(of: viewModel.preferArticleView) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil; showError = false; scheduleErrorReveal() }
+        .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil; showError = false; scheduleErrorReveal() }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -262,6 +265,13 @@ struct DetailView: View {
             }
     }
 
+    private func scheduleErrorReveal() {
+        Task {
+            try? await Task.sleep(for: .seconds(10))
+            showError = true
+        }
+    }
+
     private func webErrorView(error: String, url: URL?) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
@@ -290,13 +300,13 @@ struct DetailView: View {
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if story.type == "comment" {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id("\(viewModel.webRefreshID)|\(story.commentsURL)")
+                .id(viewModel.webRefreshID)
         } else if viewModel.preferArticleView, let articleURL = story.displayURL {
             ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id("\(viewModel.webRefreshID)|\(articleURL)")
+                .id(viewModel.webRefreshID)
         } else {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id("\(viewModel.webRefreshID)|\(story.commentsURL)")
+                .id(viewModel.webRefreshID)
         }
     }
 

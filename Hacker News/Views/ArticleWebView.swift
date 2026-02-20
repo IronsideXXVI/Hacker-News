@@ -25,9 +25,20 @@ struct ArticleWebView: NSViewRepresentable {
 
     static let adBlockRulesJSON = """
     [
-        {"trigger":{"url-filter":".*","if-domain":["*doubleclick.net","*googlesyndication.com","*googleadservices.com","*google-analytics.com","*adnxs.com","*outbrain.com","*taboola.com","*criteo.com","*amazon-adsystem.com","*quantserve.com","*scorecardresearch.com","*rubiconproject.com","*sharethrough.com","*moatads.com"]},"action":{"type":"block"}},
-        {"trigger":{"url-filter":"/ads?/"},"action":{"type":"block"}},
-        {"trigger":{"url-filter":"/ad/"},"action":{"type":"block"}}
+        {"trigger":{"url-filter":".*\\\\.doubleclick\\\\.net","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.googlesyndication\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.googleadservices\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.google-analytics\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.adnxs\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.outbrain\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.taboola\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.criteo\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.amazon-adsystem\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.quantserve\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.scorecardresearch\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.rubiconproject\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.sharethrough\\\\.com","load-type":["third-party"]},"action":{"type":"block"}},
+        {"trigger":{"url-filter":".*\\\\.moatads\\\\.com","load-type":["third-party"]},"action":{"type":"block"}}
     ]
     """
 
@@ -277,6 +288,19 @@ struct ArticleWebView: NSViewRepresentable {
                 DispatchQueue.main.async {
                     self.parent.scrollProgress = value
                 }
+            }
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            DispatchQueue.main.async {
+                self.parent.isLoading = true
+                self.parent.loadError = nil
+            }
+        }
+
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
             }
         }
 
