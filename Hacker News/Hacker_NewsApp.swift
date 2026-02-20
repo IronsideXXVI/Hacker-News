@@ -16,6 +16,7 @@ extension EnvironmentValues {
 struct Hacker_NewsApp: App {
     private let updaterController: SPUStandardUpdaterController
     @StateObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
+    @State private var feedViewModel = FeedViewModel()
 
     init() {
         ArticleWebView.precompileAdBlockRules()
@@ -32,7 +33,7 @@ struct Hacker_NewsApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(viewModel: feedViewModel)
                 .environment(\.updater, updaterController.updater)
                 .environmentObject(checkForUpdatesViewModel)
                 .onAppear {
@@ -48,6 +49,24 @@ struct Hacker_NewsApp: App {
                     checkForUpdatesViewModel.checkForUpdates()
                 }
                 .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
+            }
+            CommandGroup(after: .sidebar) {
+                Divider()
+
+                Button("Zoom In") {
+                    feedViewModel.increaseTextScale()
+                }
+                .keyboardShortcut("=", modifiers: .command)
+
+                Button("Zoom Out") {
+                    feedViewModel.decreaseTextScale()
+                }
+                .keyboardShortcut("-", modifiers: .command)
+
+                Button("Actual Size") {
+                    feedViewModel.resetTextScale()
+                }
+                .keyboardShortcut("0", modifiers: .command)
             }
         }
     }

@@ -3,6 +3,7 @@ import SwiftUI
 struct StoryRowView: View {
     let story: HNItem
     let rank: Int
+    var textScale: Double = 1.0
     var onUsernameTap: ((String) -> Void)?
 
     var body: some View {
@@ -10,20 +11,20 @@ struct StoryRowView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(rank).")
                     .foregroundStyle(.secondary)
-                    .font(.caption)
-                    .frame(minWidth: 22, alignment: .trailing)
+                    .font(.system(size: 10 * textScale))
+                    .frame(minWidth: 22 * textScale, alignment: .trailing)
 
                 Text("▲")
-                    .font(.caption2)
+                    .font(.system(size: 9 * textScale))
                     .foregroundStyle(.orange)
 
                 Text(story.title ?? "Untitled")
-                    .font(.body)
+                    .font(.system(size: 13 * textScale))
                     .lineLimit(2)
 
                 if let domain = story.displayDomain {
                     Text("(\(domain))")
-                        .font(.caption)
+                        .font(.system(size: 10 * textScale))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -52,11 +53,11 @@ struct StoryRowView: View {
                     Text("| \(descendants) comments")
                 }
             }
-            .font(.caption)
+            .font(.system(size: 10 * textScale))
             .foregroundStyle(.secondary)
-            .padding(.leading, 30)
+            .padding(.leading, 30 * textScale)
         }
         .padding(.vertical, 2)
-        .frame(height: 54, alignment: .center)
+        .frame(height: 54 * textScale, alignment: .center)
     }
 }

@@ -104,11 +104,11 @@ struct SidebarView: View {
                     ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, item in
                         Group {
                             if item.type == "comment" {
-                                CommentRowView(comment: item) { username in
+                                CommentRowView(comment: item, textScale: viewModel.textScale) { username in
                                     viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
                                 }
                             } else {
-                                StoryRowView(story: item, rank: index + 1) { username in
+                                StoryRowView(story: item, rank: index + 1, textScale: viewModel.textScale) { username in
                                     viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
                                 }
                             }

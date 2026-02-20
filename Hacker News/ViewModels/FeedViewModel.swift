@@ -71,6 +71,24 @@ final class FeedViewModel {
         }
     }
 
+    var textScale: Double {
+        didSet {
+            UserDefaults.standard.set(textScale, forKey: "textScale")
+        }
+    }
+
+    func increaseTextScale() {
+        textScale = min(1.5, textScale + 0.1)
+    }
+
+    func decreaseTextScale() {
+        textScale = max(0.75, textScale - 0.1)
+    }
+
+    func resetTextScale() {
+        textScale = 1.0
+    }
+
     private(set) var bookmarkedItems: [HNItem] = []
     private let bookmarksKey = "bookmarkedItems"
     private var currentPage = 0
@@ -81,6 +99,7 @@ final class FeedViewModel {
         self.preferArticleView = UserDefaults.standard.object(forKey: "preferArticleView") as? Bool ?? true
         self.adBlockingEnabled = UserDefaults.standard.object(forKey: "adBlockingEnabled") as? Bool ?? true
         self.popUpBlockingEnabled = UserDefaults.standard.object(forKey: "popUpBlockingEnabled") as? Bool ?? true
+        self.textScale = UserDefaults.standard.object(forKey: "textScale") as? Double ?? 1.0
         if let data = UserDefaults.standard.data(forKey: bookmarksKey),
            let items = try? JSONDecoder().decode([HNItem].self, from: data) {
             self.bookmarkedItems = items

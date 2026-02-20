@@ -22,7 +22,7 @@ struct DetailView: View {
                 VStack(spacing: 0) {
                     scrollProgressBar()
                     ZStack {
-                        ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                        ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                             .id(viewModel.webRefreshID)
                             .opacity(showContent ? 1 : 0)
                             .animation(.easeIn(duration: 0.2), value: showContent)
@@ -328,13 +328,13 @@ struct DetailView: View {
     @ViewBuilder
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if story.type == "comment" {
-            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(viewModel.webRefreshID)
         } else if viewModel.preferArticleView, let articleURL = story.displayURL {
-            ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+            ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(viewModel.webRefreshID)
         } else {
-            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(viewModel.webRefreshID)
         }
     }

@@ -5,6 +5,7 @@ struct ArticleWebView: NSViewRepresentable {
     let url: URL
     let adBlockingEnabled: Bool
     let popUpBlockingEnabled: Bool
+    let textScale: Double
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -12,10 +13,11 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
+        self.textScale = textScale
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -98,6 +100,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
+        webView.pageZoom = CGFloat(textScale)
         context.coordinator.currentURL = url
         webView.load(URLRequest(url: url))
         return webView
@@ -107,6 +110,7 @@ struct ArticleWebView: NSViewRepresentable {
         context.coordinator.parent = self
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
+        webView.pageZoom = CGFloat(textScale)
         if context.coordinator.currentURL != url {
             webView.evaluateJavaScript(Self.pauseAllMediaJS, completionHandler: nil)
             context.coordinator.currentURL = url

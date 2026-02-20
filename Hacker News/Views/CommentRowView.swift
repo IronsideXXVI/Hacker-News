@@ -2,20 +2,21 @@ import SwiftUI
 
 struct CommentRowView: View {
     let comment: HNItem
+    var textScale: Double = 1.0
     var onUsernameTap: ((String) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             if let storyTitle = comment.storyTitle {
                 Text(storyTitle)
-                    .font(.caption)
+                    .font(.system(size: 10 * textScale))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             if let text = comment.text {
                 Text(text.strippingHTML())
-                    .font(.body)
+                    .font(.system(size: 13 * textScale))
                     .lineLimit(3)
             }
 
@@ -36,7 +37,7 @@ struct CommentRowView: View {
                 }
                 Text(comment.timeAgo)
             }
-            .font(.caption)
+            .font(.system(size: 10 * textScale))
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)

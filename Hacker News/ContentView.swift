@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var viewModel = FeedViewModel()
+    @Bindable var viewModel: FeedViewModel
     @State private var authManager = HNAuthManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -23,8 +23,4 @@ struct ContentView: View {
         }
         .frame(minWidth: 900, minHeight: 600)
     }
-}
-
-#Preview {
-    ContentView()
 }
