@@ -108,6 +108,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         if context.coordinator.currentURL != url {
+            webView.evaluateJavaScript(Self.pauseAllMediaJS, completionHandler: nil)
             context.coordinator.currentURL = url
             DispatchQueue.main.async { scrollProgress = 0 }
             webView.load(URLRequest(url: url))
@@ -115,9 +116,16 @@ struct ArticleWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.loadHTMLString("", baseURL: nil)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "scrollHandler")
         webView.configuration.userContentController.removeAllContentRuleLists()
     }
+
+    // MARK: - Media Cleanup
+
+    private static let pauseAllMediaJS = """
+    document.querySelectorAll('video, audio').forEach(el => { el.pause(); el.src = ''; });
+    """
 
     // MARK: - CSS Injection Helper
 
