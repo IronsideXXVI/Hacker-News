@@ -9,6 +9,10 @@ struct DetailView: View {
     @State private var isWebViewLoading = true
     @State private var webLoadError: String?
     @State private var showError = false
+    @State private var errorRevealTask: Task<Void, Never>?
+    @State private var showContent = false
+    @State private var minDelayMet = false
+    @State private var minDelayTask: Task<Void, Never>?
 
     var body: some View {
         Group {
@@ -20,7 +24,9 @@ struct DetailView: View {
                     ZStack {
                         ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                             .id(viewModel.webRefreshID)
-                        if isWebViewLoading {
+                            .opacity(showContent ? 1 : 0)
+                            .animation(.easeIn(duration: 0.2), value: showContent)
+                        if !showContent {
                             webLoadingOverlay
                         }
                         if showError, let error = webLoadError {
@@ -34,7 +40,9 @@ struct DetailView: View {
                     scrollProgressBar()
                     ZStack {
                         articleOrCommentsView(for: story)
-                        if isWebViewLoading {
+                            .opacity(showContent ? 1 : 0)
+                            .animation(.easeIn(duration: 0.2), value: showContent)
+                        if !showContent {
                             webLoadingOverlay
                         }
                         if showError, let error = webLoadError {
@@ -54,9 +62,12 @@ struct DetailView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .onChange(of: viewModel.selectedStory) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil; showError = false; scheduleErrorReveal() }
-        .onChange(of: viewModel.preferArticleView) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil; showError = false; scheduleErrorReveal() }
-        .onChange(of: viewModel.viewingUserProfileURL) { scrollProgress = 0; isWebViewLoading = true; webLoadError = nil; showError = false; scheduleErrorReveal() }
+        .onChange(of: viewModel.selectedStory) { beginNavigation() }
+        .onChange(of: viewModel.preferArticleView) { beginNavigation() }
+        .onChange(of: viewModel.viewingUserProfileURL) { beginNavigation() }
+        .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
+        .onChange(of: isWebViewLoading) { if !isWebViewLoading && minDelayMet { showContent = true } }
+        .onChange(of: minDelayMet) { if minDelayMet && !isWebViewLoading { showContent = true } }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -253,6 +264,22 @@ struct DetailView: View {
         Divider()
     }
 
+    private func beginNavigation() {
+        scrollProgress = 0
+        isWebViewLoading = true
+        webLoadError = nil
+        showError = false
+        showContent = false
+        minDelayMet = false
+        scheduleErrorReveal()
+        minDelayTask?.cancel()
+        minDelayTask = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            minDelayMet = true
+        }
+    }
+
     private var webLoadingOverlay: some View {
         Color(.windowBackgroundColor)
             .overlay {
@@ -266,8 +293,10 @@ struct DetailView: View {
     }
 
     private func scheduleErrorReveal() {
-        Task {
+        errorRevealTask?.cancel()
+        errorRevealTask = Task {
             try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, webLoadError != nil else { return }
             showError = true
         }
     }
