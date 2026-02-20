@@ -29,6 +29,10 @@ final class FeedViewModel {
         }
     }
     var webRefreshID = UUID()
+    var showFindBar = false
+    var findQuery = ""
+    var findNextTrigger = UUID()
+    var findPreviousTrigger = UUID()
     var searchQuery: String = ""
     var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
     var isLoading = false

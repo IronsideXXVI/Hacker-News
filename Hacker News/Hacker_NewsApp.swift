@@ -50,6 +50,24 @@ struct Hacker_NewsApp: App {
                 }
                 .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
             }
+            CommandGroup(after: .textEditing) {
+                Button("Find...") {
+                    feedViewModel.showFindBar.toggle()
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button("Find Next") {
+                    feedViewModel.findNextTrigger = UUID()
+                }
+                .keyboardShortcut("g", modifiers: .command)
+                .disabled(!feedViewModel.showFindBar || feedViewModel.findQuery.isEmpty)
+
+                Button("Find Previous") {
+                    feedViewModel.findPreviousTrigger = UUID()
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                .disabled(!feedViewModel.showFindBar || feedViewModel.findQuery.isEmpty)
+            }
             CommandGroup(after: .sidebar) {
                 Divider()
 

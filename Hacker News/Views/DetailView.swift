@@ -13,6 +13,7 @@ struct DetailView: View {
     @State private var showContent = false
     @State private var minDelayMet = false
     @State private var minDelayTask: Task<Void, Never>?
+    @State private var webViewProxy = WebViewProxy()
 
     var body: some View {
         Group {
@@ -21,8 +22,9 @@ struct DetailView: View {
             } else if let profileURL = viewModel.viewingUserProfileURL {
                 VStack(spacing: 0) {
                     scrollProgressBar()
+                    if viewModel.showFindBar { findBar() }
                     ZStack {
-                        ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                        ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                             .id(viewModel.webRefreshID)
                             .opacity(showContent ? 1 : 0)
                             .animation(.easeIn(duration: 0.2), value: showContent)
@@ -38,6 +40,7 @@ struct DetailView: View {
                 VStack(spacing: 0) {
                     storyInfoBar(for: story)
                     scrollProgressBar()
+                    if viewModel.showFindBar { findBar() }
                     ZStack {
                         articleOrCommentsView(for: story)
                             .opacity(showContent ? 1 : 0)
@@ -68,6 +71,18 @@ struct DetailView: View {
         .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
         .onChange(of: isWebViewLoading) { if !isWebViewLoading && minDelayMet { showContent = true } }
         .onChange(of: minDelayMet) { if minDelayMet && !isWebViewLoading { showContent = true } }
+        .onChange(of: viewModel.showFindBar) {
+            if !viewModel.showFindBar {
+                viewModel.findQuery = ""
+                webViewProxy.clearSelection()
+            }
+        }
+        .onChange(of: viewModel.findNextTrigger) {
+            webViewProxy.findNext(viewModel.findQuery)
+        }
+        .onChange(of: viewModel.findPreviousTrigger) {
+            webViewProxy.findPrevious(viewModel.findQuery)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
@@ -162,6 +177,88 @@ struct DetailView: View {
         .sheet(isPresented: $showingLoginSheet) {
             LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
         }
+    }
+
+    @ViewBuilder
+    private func findBar() -> some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 12))
+                TextField("Find in page...", text: $viewModel.findQuery)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .onSubmit {
+                        webViewProxy.findNext(viewModel.findQuery)
+                    }
+                    .onKeyPress(.escape) {
+                        viewModel.showFindBar = false
+                        return .handled
+                    }
+                    .onChange(of: viewModel.findQuery) {
+                        let query = viewModel.findQuery
+                        if query.isEmpty {
+                            webViewProxy.clearSelection()
+                        } else {
+                            Task {
+                                await webViewProxy.countMatches(query)
+                                webViewProxy.findFirst(query)
+                            }
+                        }
+                    }
+                if !viewModel.findQuery.isEmpty {
+                    Text("\(webViewProxy.currentMatch) of \(webViewProxy.matchCount)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    Button {
+                        viewModel.findQuery = ""
+                        webViewProxy.clearSelection()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+
+            Button {
+                webViewProxy.findPrevious(viewModel.findQuery)
+            } label: {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.findQuery.isEmpty)
+
+            Button {
+                webViewProxy.findNext(viewModel.findQuery)
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.findQuery.isEmpty)
+
+            Spacer()
+
+            Button {
+                viewModel.showFindBar = false
+            } label: {
+                Text("Done")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.bar)
+        Divider()
     }
 
     @ViewBuilder
@@ -271,6 +368,7 @@ struct DetailView: View {
         showError = false
         showContent = false
         minDelayMet = false
+        viewModel.showFindBar = false
         scheduleErrorReveal()
         minDelayTask?.cancel()
         minDelayTask = Task {
@@ -328,13 +426,13 @@ struct DetailView: View {
     @ViewBuilder
     private func articleOrCommentsView(for story: HNItem) -> some View {
         if story.type == "comment" {
-            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(viewModel.webRefreshID)
         } else if viewModel.preferArticleView, let articleURL = story.displayURL {
-            ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+            ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(viewModel.webRefreshID)
         } else {
-            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(viewModel.webRefreshID)
         }
     }

@@ -1,11 +1,97 @@
 import SwiftUI
 import WebKit
 
+@Observable
+class WebViewProxy {
+    weak var webView: WKWebView?
+    var matchCount: Int = 0
+    var currentMatch: Int = 0
+
+    private func escaped(_ text: String) -> String {
+        text.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\n", with: "\\n")
+    }
+
+    func countMatches(_ text: String) async {
+        guard !text.isEmpty, let webView else {
+            matchCount = 0
+            currentMatch = 0
+            return
+        }
+        let js = """
+        (function() {
+            var query = '\(escaped(text))';
+            var body = document.body.innerText;
+            var count = 0;
+            var lower = body.toLowerCase();
+            var q = query.toLowerCase();
+            var pos = lower.indexOf(q);
+            while (pos !== -1) {
+                count++;
+                pos = lower.indexOf(q, pos + 1);
+            }
+            return count;
+        })()
+        """
+        do {
+            let result = try await webView.evaluateJavaScript(js)
+            matchCount = (result as? Int) ?? 0
+            currentMatch = matchCount > 0 ? 1 : 0
+        } catch {
+            matchCount = 0
+            currentMatch = 0
+        }
+    }
+
+    func findNext(_ text: String) {
+        guard !text.isEmpty, let webView else { return }
+        webView.evaluateJavaScript("window.find('\(escaped(text))', false, false, true)") { [weak self] result, _ in
+            guard let self else { return }
+            let found = (result as? Bool) ?? false
+            if found && self.matchCount > 0 {
+                DispatchQueue.main.async {
+                    self.currentMatch = self.currentMatch >= self.matchCount ? 1 : self.currentMatch + 1
+                }
+            }
+        }
+    }
+
+    func findPrevious(_ text: String) {
+        guard !text.isEmpty, let webView else { return }
+        webView.evaluateJavaScript("window.find('\(escaped(text))', false, true, true)") { [weak self] result, _ in
+            guard let self else { return }
+            let found = (result as? Bool) ?? false
+            if found && self.matchCount > 0 {
+                DispatchQueue.main.async {
+                    self.currentMatch = self.currentMatch <= 1 ? self.matchCount : self.currentMatch - 1
+                }
+            }
+        }
+    }
+
+    func findFirst(_ text: String) {
+        guard !text.isEmpty, let webView else { return }
+        // Move selection to start of document so find starts from top
+        webView.evaluateJavaScript("window.getSelection().removeAllRanges()") { [weak self] _, _ in
+            guard let self, let webView = self.webView else { return }
+            webView.evaluateJavaScript("window.find('\(self.escaped(text))', false, false, true)", completionHandler: nil)
+        }
+    }
+
+    func clearSelection() {
+        webView?.evaluateJavaScript("window.getSelection().removeAllRanges()", completionHandler: nil)
+        matchCount = 0
+        currentMatch = 0
+    }
+}
+
 struct ArticleWebView: NSViewRepresentable {
     let url: URL
     let adBlockingEnabled: Bool
     let popUpBlockingEnabled: Bool
     let textScale: Double
+    var webViewProxy: WebViewProxy?
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -13,11 +99,12 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
         self.textScale = textScale
+        self.webViewProxy = webViewProxy
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -101,6 +188,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
         webView.pageZoom = CGFloat(textScale)
+        webViewProxy?.webView = webView
         context.coordinator.currentURL = url
         webView.load(URLRequest(url: url))
         return webView
