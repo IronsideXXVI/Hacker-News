@@ -6,6 +6,11 @@ A native macOS client for [Hacker News](https://news.ycombinator.com), built wit
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+## Screenshots
+
+![Article View](.github/screenshots/article-view.png)
+![Comments View](.github/screenshots/comments-view.png)
+
 ## Features
 
 - Browse top, new, best, ask, show, and job stories
