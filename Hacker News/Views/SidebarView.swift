@@ -67,13 +67,13 @@ struct SidebarView: View {
                 VStack(spacing: 8) {
                     Spacer()
                     Image(systemName: "bookmark")
-                        .font(.system(size: 36))
+                        .font(.system(size: 36 * viewModel.textScale))
                         .foregroundStyle(.tertiary)
                     Text("No Bookmarks")
-                        .font(.headline)
+                        .font(.system(size: 15 * viewModel.textScale, weight: .semibold))
                         .foregroundStyle(.secondary)
                     Text("Bookmark stories to save them here.")
-                        .font(.caption)
+                        .font(.system(size: 10 * viewModel.textScale))
                         .foregroundStyle(.tertiary)
                     Spacer()
                 }
@@ -82,6 +82,7 @@ struct SidebarView: View {
                 VStack {
                     Spacer()
                     ProgressView(viewModel.contentType.isComments ? "Loading comments..." : viewModel.contentType.isAll ? "Loading feed..." : "Loading stories...")
+                        .font(.system(size: 13 * viewModel.textScale))
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
@@ -89,9 +90,9 @@ struct SidebarView: View {
                 VStack(spacing: 12) {
                     Spacer()
                     Text("Failed to load stories")
-                        .font(.headline)
+                        .font(.system(size: 15 * viewModel.textScale, weight: .semibold))
                     Text(error)
-                        .font(.caption)
+                        .font(.system(size: 10 * viewModel.textScale))
                         .foregroundStyle(.secondary)
                     Button("Retry") {
                         Task { await viewModel.loadFeed() }

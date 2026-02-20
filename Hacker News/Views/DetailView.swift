@@ -53,10 +53,10 @@ struct DetailView: View {
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "doc.richtext")
-                        .font(.system(size: 48))
+                        .font(.system(size: 48 * viewModel.textScale))
                         .foregroundStyle(.tertiary)
                     Text("Select a story")
-                        .font(.title2)
+                        .font(.system(size: 17 * viewModel.textScale))
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -160,7 +160,7 @@ struct DetailView: View {
             }
         }
         .sheet(isPresented: $showingLoginSheet) {
-            LoginSheetView(authManager: authManager)
+            LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
         }
     }
 
@@ -186,10 +186,10 @@ struct DetailView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     if let by = story.by {
                         Text("Comment by")
-                            .font(.body)
+                            .font(.system(size: 13 * viewModel.textScale))
                             .fontWeight(.medium)
                         Text(by)
-                            .font(.body)
+                            .font(.system(size: 13 * viewModel.textScale))
                             .fontWeight(.medium)
                             .foregroundStyle(.orange)
                             .onHover { hovering in
@@ -205,9 +205,9 @@ struct DetailView: View {
                     }
                     if let storyTitle = story.storyTitle {
                         Text("on:")
-                            .font(.body)
+                            .font(.system(size: 13 * viewModel.textScale))
                         Text(storyTitle)
-                            .font(.body)
+                            .font(.system(size: 13 * viewModel.textScale))
                             .lineLimit(1)
                             .foregroundStyle(.secondary)
                     }
@@ -215,17 +215,17 @@ struct DetailView: View {
                 HStack(spacing: 4) {
                     Text(story.timeAgo)
                 }
-                .font(.caption)
+                .font(.system(size: 10 * viewModel.textScale))
                 .foregroundStyle(.secondary)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(story.title ?? "Untitled")
-                        .font(.body)
+                        .font(.system(size: 13 * viewModel.textScale))
                         .fontWeight(.medium)
                         .lineLimit(1)
                     if let domain = story.displayDomain {
                         Text("(\(domain))")
-                            .font(.caption)
+                            .font(.system(size: 10 * viewModel.textScale))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -253,7 +253,7 @@ struct DetailView: View {
                         Text("| \(descendants) comments")
                     }
                 }
-                .font(.caption)
+                .font(.system(size: 10 * viewModel.textScale))
                 .foregroundStyle(.secondary)
             }
         }
@@ -304,12 +304,12 @@ struct DetailView: View {
     private func webErrorView(error: String, url: URL?) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 36))
+                .font(.system(size: 36 * viewModel.textScale))
                 .foregroundStyle(.secondary)
             Text("Failed to load page")
-                .font(.headline)
+                .font(.system(size: 15 * viewModel.textScale, weight: .semibold))
             Text(error)
-                .font(.caption)
+                .font(.system(size: 10 * viewModel.textScale))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             if let url {

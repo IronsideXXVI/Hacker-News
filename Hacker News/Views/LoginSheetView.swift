@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoginSheetView: View {
     var authManager: HNAuthManager
+    var textScale: Double = 1.0
     @Environment(\.dismiss) private var dismiss
     @State private var username = ""
     @State private var password = ""
@@ -18,6 +19,7 @@ struct LoginSheetView: View {
                 loginAndCreateAccountView
             }
         }
+        .font(.system(size: 13 * textScale))
         .padding(24)
         .frame(width: 340)
         .disabled(authManager.isLoggingIn)

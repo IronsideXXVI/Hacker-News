@@ -58,6 +58,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .font(.system(size: 13 * viewModel.textScale))
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
