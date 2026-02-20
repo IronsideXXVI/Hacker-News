@@ -13,6 +13,9 @@ env:
   TEAM_ID: "69Y3X8R7D7"
   SIGNING_IDENTITY: "Developer ID Application"
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: macos-15
