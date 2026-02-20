@@ -35,6 +35,11 @@ struct Hacker_NewsApp: App {
             ContentView()
                 .environment(\.updater, updaterController.updater)
                 .environmentObject(checkForUpdatesViewModel)
+                .onAppear {
+                    if updaterController.updater.automaticallyChecksForUpdates {
+                        updaterController.updater.checkForUpdatesInBackground()
+                    }
+                }
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
