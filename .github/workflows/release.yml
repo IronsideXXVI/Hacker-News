@@ -128,8 +128,34 @@ jobs:
           </plist>
           ENTEOF
 
-          # Re-sign with Developer ID Application certificate
-          codesign --force --deep \
+          # Sign Sparkle XPC services first (no sandbox - they need to run outside it)
+          SPARKLE_FRAMEWORK="$APP_PATH/Contents/Frameworks/Sparkle.framework"
+          for xpc in "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/"*.xpc; do
+            codesign --force \
+              --sign "$SIGNING_IDENTITY" \
+              --timestamp \
+              --options runtime \
+              "$xpc"
+          done
+
+          # Sign Sparkle Autoupdate (if present)
+          if [ -d "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate.app" ]; then
+            codesign --force \
+              --sign "$SIGNING_IDENTITY" \
+              --timestamp \
+              --options runtime \
+              "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate.app"
+          fi
+
+          # Sign the Sparkle framework itself
+          codesign --force \
+            --sign "$SIGNING_IDENTITY" \
+            --timestamp \
+            --options runtime \
+            "$SPARKLE_FRAMEWORK"
+
+          # Sign the main app (with sandbox entitlements)
+          codesign --force \
             --sign "$SIGNING_IDENTITY" \
             --timestamp \
             --options runtime \
