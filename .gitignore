@@ -23,7 +23,10 @@ Pods/
 # Local build/release assets
 export-options.plist
 scripts/
+
+# Resources (un-ignore dmg-background for CI)
 resources/
+!resources/dmg-background.png
 
 # OS files
 .DS_Store

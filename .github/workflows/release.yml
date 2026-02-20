@@ -11,6 +11,7 @@ env:
   PROJECT: "Hacker News.xcodeproj"
   BUNDLE_ID: "com.IronsideXXVI.Hacker-News"
   TEAM_ID: "69Y3X8R7D7"
+  SIGNING_IDENTITY: "Developer ID Application"
 
 jobs:
   build-and-release:
@@ -71,8 +72,12 @@ jobs:
             -scheme "$SCHEME" \
             -clonedSourcePackagesDirPath "$RUNNER_TEMP/packages"
 
-      # ── Archive ──────────────────────────────────────────────────────
-      - name: Archive
+      # ═══════════════════════════════════════════════════════════════
+      #  PHASE 1: Build & Sign the .app
+      # ═══════════════════════════════════════════════════════════════
+
+      # ── Step 1: Archive ──────────────────────────────────────────────
+      - name: "Step 1: Archive"
         run: |
           xcodebuild archive \
             -project "$PROJECT" \
@@ -80,86 +85,221 @@ jobs:
             -configuration Release \
             -archivePath $RUNNER_TEMP/app.xcarchive \
             -clonedSourcePackagesDirPath "$RUNNER_TEMP/packages" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Developer ID Application" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            OTHER_CODE_SIGN_FLAGS="--timestamp"
+            -destination "generic/platform=macOS" \
+            -quiet
 
-      # ── Prepare .app ─────────────────────────────────────────────────
-      - name: Prepare app for distribution
+      # ── Step 2: Extract and re-sign with Developer ID ────────────────
+      - name: "Step 2: Extract app and sign with Developer ID"
         run: |
-          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+          APP_PATH="$RUNNER_TEMP/$APP_NAME.app"
 
-          # Remove any embedded provisioning profile (not needed for Developer ID)
+          # Copy the .app out of the archive
+          cp -R "$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app" "$APP_PATH"
+
+          # Remove the development provisioning profile
           rm -f "$APP_PATH/Contents/embedded.provisionprofile"
 
-          # Re-sign to ensure proper Developer ID signature
-          codesign --force --deep --timestamp \
+          # Strip quarantine/extended attributes
+          xattr -cr "$APP_PATH"
+
+          # Create entitlements for Developer ID distribution
+          cat > $RUNNER_TEMP/dist-entitlements.plist << 'ENTEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>com.apple.security.app-sandbox</key>
+              <true/>
+              <key>com.apple.security.network.client</key>
+              <true/>
+          </dict>
+          </plist>
+          ENTEOF
+
+          # Re-sign with Developer ID Application certificate
+          codesign --force --deep \
+            --sign "$SIGNING_IDENTITY" \
+            --timestamp \
             --options runtime \
-            --sign "Developer ID Application: Dylan Ironside ($TEAM_ID)" \
+            --entitlements $RUNNER_TEMP/dist-entitlements.plist \
             "$APP_PATH"
 
-          # Verify signature
-          codesign --verify --deep --strict "$APP_PATH"
+      # ── Step 3: Verify app code signing ──────────────────────────────
+      - name: "Step 3: Verify app code signature"
+        run: |
+          codesign -v --verbose "$RUNNER_TEMP/$APP_NAME.app" 2>&1
 
-      # ── Notarize .app ────────────────────────────────────────────────
-      - name: Notarize app
+      # ═══════════════════════════════════════════════════════════════
+      #  PHASE 2: Notarize & Staple the .app
+      # ═══════════════════════════════════════════════════════════════
+
+      # ── Step 4: Notarize the .app ────────────────────────────────────
+      - name: "Step 4: Notarize app"
         env:
           API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
-          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+          APP_PATH="$RUNNER_TEMP/$APP_NAME.app"
 
-          # Create a zip for notarization
+          # Create a zip for notarization submission
           ditto -c -k --keepParent "$APP_PATH" $RUNNER_TEMP/app-for-notarization.zip
 
           xcrun notarytool submit $RUNNER_TEMP/app-for-notarization.zip \
             --key ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
             --key-id "$API_KEY_ID" \
             --issuer "$API_ISSUER_ID" \
-            --wait --timeout 600
+            --wait
 
-          # Staple
-          xcrun stapler staple "$APP_PATH"
+          rm -f $RUNNER_TEMP/app-for-notarization.zip
 
-      # ── Create DMG ──────────────────────────────────────────────────
-      - name: Create DMG
+      # ── Step 5: Staple the .app ──────────────────────────────────────
+      - name: "Step 5: Staple app"
         run: |
-          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
-          DMG_PATH="$RUNNER_TEMP/$APP_NAME.dmg"
-          STAGING="$RUNNER_TEMP/dmg-staging"
+          xcrun stapler staple "$RUNNER_TEMP/$APP_NAME.app"
 
-          mkdir -p "$STAGING"
-          cp -R "$APP_PATH" "$STAGING/"
-          ln -s /Applications "$STAGING/Applications"
+      # ── Step 6: Verify notarized app ─────────────────────────────────
+      - name: "Step 6: Verify notarized app"
+        run: |
+          xcrun stapler validate "$RUNNER_TEMP/$APP_NAME.app"
+          spctl -a -v "$RUNNER_TEMP/$APP_NAME.app" 2>&1 || true
 
-          # Create DMG
-          hdiutil create -volname "$APP_NAME" \
-            -srcfolder "$STAGING" \
-            -ov -format UDZO \
+      # ═══════════════════════════════════════════════════════════════
+      #  PHASE 3: Create, Sign, Notarize & Staple the DMG
+      # ═══════════════════════════════════════════════════════════════
+
+      # ── Step 7: Create DMG ───────────────────────────────────────────
+      - name: "Step 7: Create DMG"
+        run: |
+          APP_PATH="$RUNNER_TEMP/$APP_NAME.app"
+          DMG_TMP="$RUNNER_TEMP/tmp.dmg"
+          VOL_NAME="$APP_NAME"
+          VOL_PATH="/Volumes/$VOL_NAME"
+
+          # Calculate DMG size (app size + 20MB headroom)
+          APP_SIZE_KB=$(du -sk "$APP_PATH" | cut -f1)
+          DMG_SIZE_MB=$(( (APP_SIZE_KB / 1024) + 20 ))
+
+          # Detach any previously mounted volume with the same name
+          if [ -d "$VOL_PATH" ]; then
+            hdiutil detach "$VOL_PATH" -force 2>/dev/null || true
+          fi
+
+          # Create a temporary read-write DMG
+          hdiutil create \
+            -size "${DMG_SIZE_MB}m" \
+            -fs HFS+ \
+            -volname "$VOL_NAME" \
+            "$DMG_TMP"
+
+          # Mount it
+          MOUNT_OUTPUT=$(hdiutil attach "$DMG_TMP" -readwrite -noverify)
+          DEVICE=$(echo "$MOUNT_OUTPUT" | grep "/dev/" | head -1 | awk '{print $1}')
+
+          if [ ! -d "$VOL_PATH" ]; then
+            echo "::error::Failed to mount DMG at $VOL_PATH"
+            exit 1
+          fi
+
+          # Copy app to mounted volume using tar (bypasses xattr/provenance permission issues)
+          (cd "$(dirname "$APP_PATH")" && tar cf - "$APP_NAME.app") | (cd "$VOL_PATH" && tar xf -)
+
+          # Verify the app was actually copied
+          if [ ! -d "$VOL_PATH/$APP_NAME.app/Contents/MacOS" ]; then
+            echo "::error::Failed to copy app to DMG"
+            exit 1
+          fi
+
+          # Create symlink to /Applications
+          ln -s /Applications "$VOL_PATH/Applications"
+
+          # Add background image
+          BACKGROUND="resources/dmg-background.png"
+          if [ -f "$BACKGROUND" ]; then
+            mkdir -p "$VOL_PATH/.background"
+            cp "$BACKGROUND" "$VOL_PATH/.background/background.png"
+          fi
+
+          # Use AppleScript to configure the Finder window appearance
+          osascript <<APPLESCRIPT
+          tell application "Finder"
+            tell disk "$VOL_NAME"
+              open
+              set current view of container window to icon view
+              set toolbar visible of container window to false
+              set statusbar visible of container window to false
+              -- Compact window: 480px wide, 300px tall
+              set bounds of container window to {400, 200, 880, 500}
+
+              set viewOptions to the icon view options of container window
+              set arrangement of viewOptions to not arranged
+              set icon size of viewOptions to 100
+              set text size of viewOptions to 13
+              set background picture of viewOptions to file ".background:background.png"
+
+              set position of item "$APP_NAME.app" of container window to {120, 150}
+              set position of item "Applications" of container window to {360, 150}
+
+              close
+              open
+
+              -- Give Finder time to render icons and apply settings
+              delay 3
+              close
+            end tell
+          end tell
+          APPLESCRIPT
+
+          # Ensure .DS_Store is written to disk
+          sync
+
+          # Detach the volume
+          hdiutil detach "$DEVICE"
+
+          # Convert to read-only compressed DMG
+          hdiutil convert "$DMG_TMP" \
+            -format UDZO \
+            -imagekey zlib-level=9 \
+            -o "$RUNNER_TEMP/$APP_NAME.dmg"
+
+          rm -f "$DMG_TMP"
+
+          echo "DMG_PATH=$RUNNER_TEMP/$APP_NAME.dmg" >> $GITHUB_ENV
+
+      # ── Step 8: Sign DMG ─────────────────────────────────────────────
+      - name: "Step 8: Sign DMG"
+        run: |
+          codesign \
+            --sign "$SIGNING_IDENTITY" \
+            --timestamp \
             "$DMG_PATH"
 
-          rm -rf "$STAGING"
-
-          echo "DMG_PATH=$DMG_PATH" >> $GITHUB_ENV
-
-      # ── Sign & notarize DMG ──────────────────────────────────────────
-      - name: Sign and notarize DMG
+      # ── Step 9: Notarize DMG ─────────────────────────────────────────
+      - name: "Step 9: Notarize DMG"
         env:
           API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
-          codesign --force --timestamp \
-            --sign "Developer ID Application: Dylan Ironside ($TEAM_ID)" \
-            "$DMG_PATH"
-
           xcrun notarytool submit "$DMG_PATH" \
             --key ~/private_keys/AuthKey_${API_KEY_ID}.p8 \
             --key-id "$API_KEY_ID" \
             --issuer "$API_ISSUER_ID" \
-            --wait --timeout 600
+            --wait
 
+      # ── Step 10: Staple DMG ──────────────────────────────────────────
+      - name: "Step 10: Staple DMG"
+        run: |
           xcrun stapler staple "$DMG_PATH"
+
+      # ── Step 11: Final verification ──────────────────────────────────
+      - name: "Step 11: Verify notarized DMG"
+        run: |
+          xcrun stapler validate "$DMG_PATH"
+          spctl -a -v -t install "$DMG_PATH" 2>&1
+
+      # ═══════════════════════════════════════════════════════════════
+      #  PHASE 4: Release
+      # ═══════════════════════════════════════════════════════════════
 
       # ── Sparkle signature ────────────────────────────────────────────
       - name: Generate Sparkle EdDSA signature
@@ -191,7 +331,7 @@ jobs:
       # ── Extract version info ─────────────────────────────────────────
       - name: Extract version info
         run: |
-          APP_PATH="$RUNNER_TEMP/app.xcarchive/Products/Applications/$APP_NAME.app"
+          APP_PATH="$RUNNER_TEMP/$APP_NAME.app"
           VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
           BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Contents/Info.plist")
           TAG="${GITHUB_REF#refs/tags/}"
@@ -203,7 +343,7 @@ jobs:
       # ── Build appcast entry ──────────────────────────────────────────
       - name: Build appcast.xml
         run: |
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/$APP_NAME.dmg"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/$TAG/HackerNews-${APP_VERSION}.dmg"
           PUB_DATE=$(date -u +"%a, %d %b %Y %H:%M:%S %z")
 
           cat > $RUNNER_TEMP/appcast.xml << APPCAST_EOF
@@ -236,11 +376,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Rename DMG for release (no spaces in filename for cleaner URLs)
-          cp "$DMG_PATH" "$RUNNER_TEMP/Hacker-News-${APP_VERSION}.dmg"
+          cp "$DMG_PATH" "$RUNNER_TEMP/HackerNews-${APP_VERSION}.dmg"
 
           gh release create "$TAG" \
-            "$RUNNER_TEMP/Hacker-News-${APP_VERSION}.dmg#Hacker News ${APP_VERSION}" \
+            "$RUNNER_TEMP/HackerNews-${APP_VERSION}.dmg#Hacker News ${APP_VERSION}" \
             --title "$APP_NAME $APP_VERSION" \
             --generate-notes
 
