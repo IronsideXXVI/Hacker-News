@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var viewModel: FeedViewModel
+    @State private var listSelection: HNItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -99,7 +100,7 @@ struct SidebarView: View {
                 }
                 .frame(maxWidth: .infinity)
             } else {
-                List(selection: $viewModel.selectedStory) {
+                List(selection: $listSelection) {
                     ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, item in
                         Group {
                             if item.type == "comment" {
@@ -128,6 +129,14 @@ struct SidebarView: View {
                     }
                 }
                 .listStyle(.sidebar)
+                .onChange(of: listSelection) { _, newValue in
+                    viewModel.selectedStory = newValue
+                }
+                .onChange(of: viewModel.selectedStory) { _, newValue in
+                    if newValue == nil {
+                        listSelection = nil
+                    }
+                }
             }
         }
     }
