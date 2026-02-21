@@ -44,7 +44,6 @@ struct DetailView: View {
     private var contentWithChangeHandlers: some View {
         mainContent
             .onChange(of: viewModel.selectedStory) { beginNavigation() }
-            .onChange(of: viewModel.viewMode) { beginNavigation() }
             .onChange(of: viewModel.viewingUserProfileURL) { beginNavigation() }
             .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
             .onChange(of: isWebViewLoading) { handlePrimaryLoadingChange() }
@@ -57,15 +56,15 @@ struct DetailView: View {
     var body: some View {
         contentWithChangeHandlers
             .onChange(of: viewModel.webRefreshID) { webViewID = UUID(); commentsWebViewID = UUID() }
-            .onChange(of: viewModel.showFindBar) { if !viewModel.showFindBar { viewModel.findQuery = ""; webViewProxy.clearSelection() } }
-            .onChange(of: viewModel.findNextTrigger) { webViewProxy.findNext(viewModel.findQuery) }
-            .onChange(of: viewModel.findPreviousTrigger) { webViewProxy.findPrevious(viewModel.findQuery) }
+            .onChange(of: viewModel.showFindBar) { if !viewModel.showFindBar { viewModel.findQuery = ""; activeWebViewProxy.clearSelection() } }
+            .onChange(of: viewModel.findNextTrigger) { activeWebViewProxy.findNext(viewModel.findQuery) }
+            .onChange(of: viewModel.findPreviousTrigger) { activeWebViewProxy.findPrevious(viewModel.findQuery) }
             .onChange(of: viewModel.goBackTrigger) {
-                if webViewProxy.canGoBack { webViewProxy.goBack() }
+                if activeWebViewProxy.canGoBack { activeWebViewProxy.goBack() }
                 else { viewModel.navigateBack() }
             }
             .onChange(of: viewModel.goForwardTrigger) {
-                if webViewProxy.canGoForward { webViewProxy.goForward() }
+                if activeWebViewProxy.canGoForward { activeWebViewProxy.goForward() }
                 else { viewModel.navigateForward() }
             }
             .onChange(of: viewModel.refreshTrigger) { webViewID = UUID(); commentsWebViewID = UUID(); Task { await viewModel.loadFeed() } }
@@ -87,23 +86,23 @@ struct DetailView: View {
             }
             .help("Toggle Sidebar")
             .keyboardShortcut("s", modifiers: [.command, .control])
-            if webViewProxy.canGoBack || webViewProxy.canGoForward || viewModel.canNavigateBack || viewModel.canNavigateForward {
+            if activeWebViewProxy.canGoBack || activeWebViewProxy.canGoForward || viewModel.canNavigateBack || viewModel.canNavigateForward {
                 Button {
-                    if webViewProxy.canGoBack { webViewProxy.goBack() }
+                    if activeWebViewProxy.canGoBack { activeWebViewProxy.goBack() }
                     else { viewModel.navigateBack() }
                 } label: {
                     Image(systemName: "chevron.left")
                 }
                 .help("Back")
-                .disabled(!webViewProxy.canGoBack && !viewModel.canNavigateBack)
+                .disabled(!activeWebViewProxy.canGoBack && !viewModel.canNavigateBack)
                 Button {
-                    if webViewProxy.canGoForward { webViewProxy.goForward() }
+                    if activeWebViewProxy.canGoForward { activeWebViewProxy.goForward() }
                     else { viewModel.navigateForward() }
                 } label: {
                     Image(systemName: "chevron.right")
                 }
                 .help("Forward")
-                .disabled(!webViewProxy.canGoForward && !viewModel.canNavigateForward)
+                .disabled(!activeWebViewProxy.canGoForward && !viewModel.canNavigateForward)
             }
             Button {
                 webViewID = UUID()
@@ -195,6 +194,7 @@ struct DetailView: View {
 
     @ViewBuilder
     private func findBar() -> some View {
+        let proxy = activeWebViewProxy
         HStack(spacing: 8) {
             HStack(spacing: 4) {
                 Image(systemName: "magnifyingglass")
@@ -204,7 +204,7 @@ struct DetailView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .onSubmit {
-                        webViewProxy.findNext(viewModel.findQuery)
+                        proxy.findNext(viewModel.findQuery)
                     }
                     .onKeyPress(.escape) {
                         viewModel.showFindBar = false
@@ -213,22 +213,22 @@ struct DetailView: View {
                     .onChange(of: viewModel.findQuery) {
                         let query = viewModel.findQuery
                         if query.isEmpty {
-                            webViewProxy.clearSelection()
+                            proxy.clearSelection()
                         } else {
                             Task {
-                                await webViewProxy.countMatches(query)
-                                webViewProxy.findFirst(query)
+                                await proxy.countMatches(query)
+                                proxy.findFirst(query)
                             }
                         }
                     }
                 if !viewModel.findQuery.isEmpty {
-                    Text("\(webViewProxy.currentMatch) of \(webViewProxy.matchCount)")
+                    Text("\(proxy.currentMatch) of \(proxy.matchCount)")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                     Button {
                         viewModel.findQuery = ""
-                        webViewProxy.clearSelection()
+                        proxy.clearSelection()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
@@ -242,7 +242,7 @@ struct DetailView: View {
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
 
             Button {
-                webViewProxy.findPrevious(viewModel.findQuery)
+                proxy.findPrevious(viewModel.findQuery)
             } label: {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 11, weight: .semibold))
@@ -251,7 +251,7 @@ struct DetailView: View {
             .disabled(viewModel.findQuery.isEmpty)
 
             Button {
-                webViewProxy.findNext(viewModel.findQuery)
+                proxy.findNext(viewModel.findQuery)
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .semibold))
@@ -275,19 +275,28 @@ struct DetailView: View {
         Divider()
     }
 
+    private var activeWebViewProxy: WebViewProxy {
+        if let story = viewModel.selectedStory, story.type != "comment", story.displayURL != nil, viewModel.viewMode == .comments {
+            return commentsWebViewProxy
+        }
+        return webViewProxy
+    }
+
     @ViewBuilder
     private func scrollProgressBar() -> some View {
+        let progress = activeWebViewProxy === commentsWebViewProxy ? commentsScrollProgress : scrollProgress
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 Rectangle()
                     .fill(Color.orange.opacity(0.15))
                 Rectangle()
                     .fill(Color.orange)
-                    .frame(width: geometry.size.width * scrollProgress)
+                    .frame(width: geometry.size.width * progress)
             }
         }
         .frame(height: 3)
         .animation(.linear(duration: 0.1), value: scrollProgress)
+        .animation(.linear(duration: 0.1), value: commentsScrollProgress)
     }
 
     @ViewBuilder
@@ -316,11 +325,12 @@ struct DetailView: View {
             storyInfoBar(for: story)
             scrollProgressBar()
             if viewModel.showFindBar { findBar() }
-            if viewModel.viewMode == .both && story.type != "comment" && story.displayURL != nil {
-                articleOrCommentsView(for: story)
+            if story.type != "comment", let articleURL = story.displayURL {
+                dualPaneView(articleURL: articleURL, commentsURL: story.commentsURL)
             } else {
                 ZStack {
-                    articleOrCommentsView(for: story)
+                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                        .id(webViewID)
                         .opacity(showContent ? 1 : 0)
                         .animation(.easeIn(duration: 0.2), value: showContent)
                     if !showContent {
@@ -541,24 +551,9 @@ struct DetailView: View {
     }
 
     @ViewBuilder
-    private func articleOrCommentsView(for story: HNItem) -> some View {
-        if story.type == "comment" {
-            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id(webViewID)
-        } else if viewModel.viewMode == .both, let articleURL = story.displayURL {
-            splitView(articleURL: articleURL, commentsURL: story.commentsURL)
-        } else if viewModel.viewMode == .post, let articleURL = story.displayURL {
-            ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id(webViewID)
-        } else {
-            ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                .id(webViewID)
-        }
-    }
-
-    @ViewBuilder
-    private func splitView(articleURL: URL, commentsURL: URL) -> some View {
-        HSplitView {
+    private func dualPaneView(articleURL: URL, commentsURL: URL) -> some View {
+        HStack(spacing: 0) {
+            // Article pane — always alive, hidden when in comments-only mode
             ZStack {
                 ArticleWebView(
                     url: articleURL,
@@ -581,8 +576,11 @@ struct DetailView: View {
                     webErrorView(error: error, url: articleURL)
                 }
             }
-            .frame(minWidth: 300)
+            .frame(maxWidth: viewModel.viewMode == .comments ? 0 : .infinity)
+            .opacity(viewModel.viewMode == .comments ? 0 : 1)
+            .clipped()
 
+            // Comments pane — always alive, hidden when in post-only mode
             ZStack {
                 ArticleWebView(
                     url: commentsURL,
@@ -605,7 +603,9 @@ struct DetailView: View {
                     webErrorView(error: error, url: commentsURL)
                 }
             }
-            .frame(minWidth: 300)
+            .frame(maxWidth: viewModel.viewMode == .post ? 0 : .infinity)
+            .opacity(viewModel.viewMode == .post ? 0 : 1)
+            .clipped()
         }
     }
 
