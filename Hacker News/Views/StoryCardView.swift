@@ -4,7 +4,7 @@ struct StoryCardView: View {
     let story: HNItem
     var textScale: Double = 1.0
     @State private var isHovered = false
-    @State private var ogImageURL: URL?
+    @State private var cardImage: NSImage?
     @State private var imageLoaded = false
     @Environment(\.colorScheme) private var colorScheme
 
@@ -12,102 +12,11 @@ struct StoryCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Image area — fixed height
-            GeometryReader { geo in
-                ZStack {
-                    if let ogImageURL, imageLoaded {
-                        AsyncImage(url: ogImageURL) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: geo.size.width, height: geo.size.height)
-                            default:
-                                defaultImage
-                            }
-                        }
-                    } else if imageLoaded {
-                        defaultImage
-                    } else {
-                        defaultImage
-                            .overlay {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
-                    }
-                }
-                .frame(width: geo.size.width, height: geo.size.height)
-                .clipped()
-            }
-            .frame(height: imageHeight)
+            imageSection
+                .frame(height: imageHeight)
 
-            // Text content
-            VStack(alignment: .leading, spacing: 8) {
-                if let domain = story.displayDomain {
-                    HStack(spacing: 4) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 9 * textScale))
-                        Text(domain)
-                            .lineLimit(1)
-                    }
-                    .font(.system(size: 10 * textScale))
-                    .foregroundStyle(.secondary)
-                } else if story.type == "job" {
-                    Label("Job", systemImage: "briefcase")
-                        .font(.system(size: 10 * textScale))
-                        .foregroundStyle(.orange)
-                }
-
-                if story.type == "comment" {
-                    if let storyTitle = story.storyTitle {
-                        Text(storyTitle)
-                            .font(.system(size: 10 * textScale))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Text(story.text?.strippingHTML() ?? "")
-                        .font(.system(size: 13 * textScale))
-                        .lineLimit(3)
-                } else {
-                    Text(story.title ?? "Untitled")
-                        .font(.system(size: 14 * textScale, weight: .semibold))
-                        .lineLimit(3)
-
-                    if story.url == nil, let text = story.text {
-                        Text(text.strippingHTML())
-                            .font(.system(size: 11 * textScale))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    if let score = story.score {
-                        HStack(spacing: 2) {
-                            Text("▲")
-                                .font(.system(size: 8 * textScale))
-                                .foregroundStyle(.orange)
-                            Text("\(score)")
-                        }
-                    }
-                    if let by = story.by {
-                        Text(by)
-                            .foregroundStyle(.orange)
-                    }
-                    Text(story.timeAgo)
-                    if let descendants = story.descendants {
-                        HStack(spacing: 2) {
-                            Image(systemName: "bubble.right")
-                                .font(.system(size: 9 * textScale))
-                            Text("\(descendants)")
-                        }
-                    }
-                }
-                .font(.system(size: 10 * textScale))
-                .foregroundStyle(.secondary)
-            }
-            .padding(12)
+            textSection
+                .padding(12)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
@@ -135,11 +44,36 @@ struct StoryCardView: View {
                 imageLoaded = true
                 return
             }
-            let urlString = await OpenGraphService.shared.fetchImageURL(for: pageURL)
-            if let urlString, let url = URL(string: urlString) {
-                ogImageURL = url
+            if let ogURLString = await OpenGraphService.shared.fetchImageURL(for: pageURL),
+               let ogURL = URL(string: ogURLString) {
+                cardImage = await ImageCacheService.shared.image(for: ogURL)
             }
             imageLoaded = true
+        }
+    }
+
+    // MARK: - Image Section
+
+    private var imageSection: some View {
+        GeometryReader { geo in
+            ZStack {
+                if let cardImage {
+                    Image(nsImage: cardImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                } else if imageLoaded {
+                    defaultImage
+                } else {
+                    defaultImage
+                        .overlay {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
     }
 
@@ -155,6 +89,75 @@ struct StoryCardView: View {
             Image(systemName: "doc.richtext")
                 .font(.system(size: 32 * textScale))
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - Text Section
+
+    private var textSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let domain = story.displayDomain {
+                HStack(spacing: 4) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 9 * textScale))
+                    Text(domain)
+                        .lineLimit(1)
+                }
+                .font(.system(size: 10 * textScale))
+                .foregroundStyle(.secondary)
+            } else if story.type == "job" {
+                Label("Job", systemImage: "briefcase")
+                    .font(.system(size: 10 * textScale))
+                    .foregroundStyle(.orange)
+            }
+
+            if story.type == "comment" {
+                if let storyTitle = story.storyTitle {
+                    Text(storyTitle)
+                        .font(.system(size: 10 * textScale))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Text(story.text?.strippingHTML() ?? "")
+                    .font(.system(size: 13 * textScale))
+                    .lineLimit(3)
+            } else {
+                Text(story.title ?? "Untitled")
+                    .font(.system(size: 14 * textScale, weight: .semibold))
+                    .lineLimit(3)
+
+                if story.url == nil, let text = story.text {
+                    Text(text.strippingHTML())
+                        .font(.system(size: 11 * textScale))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            HStack(spacing: 8) {
+                if let score = story.score {
+                    HStack(spacing: 2) {
+                        Text("▲")
+                            .font(.system(size: 8 * textScale))
+                            .foregroundStyle(.orange)
+                        Text("\(score)")
+                    }
+                }
+                if let by = story.by {
+                    Text(by)
+                        .foregroundStyle(.orange)
+                }
+                Text(story.timeAgo)
+                if let descendants = story.descendants {
+                    HStack(spacing: 2) {
+                        Image(systemName: "bubble.right")
+                            .font(.system(size: 9 * textScale))
+                        Text("\(descendants)")
+                    }
+                }
+            }
+            .font(.system(size: 10 * textScale))
+            .foregroundStyle(.secondary)
         }
     }
 }

@@ -20,6 +20,10 @@ struct Hacker_NewsApp: App {
 
     init() {
         ArticleWebView.precompileAdBlockRules()
+        Task {
+            await OpenGraphService.shared.clearExpired()
+            await ImageCacheService.shared.clearExpired()
+        }
         let controller = SPUStandardUpdaterController(
             startingUpdater: true,
             updaterDelegate: nil,
