@@ -6,16 +6,16 @@
     <description>Most recent updates for Hacker News</description>
     <language>en</language>
     <item>
-      <title>Version 1.1.5</title>
-      <pubDate>Sat, 21 Feb 2026 15:48:54 +0000</pubDate>
-      <sparkle:version>27</sparkle:version>
-      <sparkle:shortVersionString>1.1.5</sparkle:shortVersionString>
+      <title>Version 1.1.6</title>
+      <pubDate>Sat, 21 Feb 2026 18:34:04 +0000</pubDate>
+      <sparkle:version>28</sparkle:version>
+      <sparkle:shortVersionString>1.1.6</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/IronsideXXVI/Hacker-News/releases/download/v1.1.5/HackerNews-1.1.5.dmg"
-        length="2834276"
+        url="https://github.com/IronsideXXVI/Hacker-News/releases/download/v1.1.6/HackerNews-1.1.6.dmg"
+        length="2833911"
         type="application/octet-stream"
-        sparkle:edSignature="Kkhi+vO7Em3eCgcEadTzk1UabcJMeYln5xVVxOrrq8m6Qy/1Z9l0nD/ILDtQtrcavqNUuHT1zWHB+bIhUkPxDQ=="
+        sparkle:edSignature="4FwO+Y80mfdkJaGW/1ncllzcYAICwT8Ox9bY+IuxKEhZ1Vo5/nA1O7i/uuCj1GeXJQTcFS+ZYB+0llGEnT49DA=="
       />
     </item>
   </channel>
