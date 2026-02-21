@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 
 enum AppearanceMode: String, CaseIterable {
-    case system, light, dark
+    case light, dark, system
 
     var colorScheme: ColorScheme? {
         switch self {

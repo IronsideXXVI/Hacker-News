@@ -34,13 +34,16 @@ struct Hacker_NewsApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: feedViewModel)
-                .preferredColorScheme(feedViewModel.appearanceMode.colorScheme)
                 .environment(\.updater, updaterController.updater)
                 .environmentObject(checkForUpdatesViewModel)
                 .onAppear {
+                    applyAppearance(feedViewModel.appearanceMode)
                     if updaterController.updater.automaticallyChecksForUpdates {
                         updaterController.updater.checkForUpdatesInBackground()
                     }
+                }
+                .onChange(of: feedViewModel.appearanceMode) {
+                    applyAppearance(feedViewModel.appearanceMode)
                 }
         }
         .defaultSize(width: 1200, height: 800)
@@ -116,6 +119,14 @@ struct Hacker_NewsApp: App {
                 }
                 .keyboardShortcut("0", modifiers: .command)
             }
+        }
+    }
+
+    private func applyAppearance(_ mode: AppearanceMode) {
+        switch mode {
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        case .system: NSApp.appearance = nil
         }
     }
 }

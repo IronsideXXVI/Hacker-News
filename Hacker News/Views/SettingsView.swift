@@ -36,10 +36,16 @@ struct SettingsView: View {
                         .font(.system(size: 18))
                         .foregroundStyle(.secondary)
                 }
-                Button("Reset to Default") {
-                    viewModel.resetTextScale()
+                HStack {
+                    Button {
+                        viewModel.resetTextScale()
+                    } label: {
+                        Text("Reset to Default")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.textScale == 1.0)
+                    Spacer()
                 }
-                .disabled(viewModel.textScale == 1.0)
             } header: {
                 Text("Text Size")
             }
@@ -60,16 +66,23 @@ struct SettingsView: View {
                             set: { updater.automaticallyChecksForUpdates = $0 }
                         )
                     )
-                    Button("Check for Updates Now") {
-                        checkForUpdatesViewModel.checkForUpdates()
+                    HStack {
+                        Button {
+                            checkForUpdatesViewModel.checkForUpdates()
+                        } label: {
+                            Text("Check for Updates Now")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
+                        Spacer()
                     }
-                    .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
                 } header: {
                     Text("Updates")
                 }
             }
         }
         .font(.system(size: 13 * viewModel.textScale))
+        .tint(Color(red: 1.0, green: 0.4, blue: 0.0))
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
