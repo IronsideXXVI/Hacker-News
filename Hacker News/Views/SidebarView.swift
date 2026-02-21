@@ -179,7 +179,9 @@ private struct RowSelectionObserver: NSViewRepresentable {
 
 private class RowSelectionNSView: NSView {
     var onSelectionChange: ((Bool) -> Void)?
-    private var observation: NSKeyValueObservation?
+    private var selectedObservation: NSKeyValueObservation?
+    private var emphasizedObservation: NSKeyValueObservation?
+    private weak var rowView: NSTableRowView?
 
     override var intrinsicContentSize: NSSize { .zero }
 
@@ -194,27 +196,36 @@ private class RowSelectionNSView: NSView {
     }
 
     private func attemptObservation() {
-        guard observation == nil, superview != nil else { return }
+        guard selectedObservation == nil, superview != nil else { return }
 
         if !findAndObserveRowView() {
-            // NSTableRowView may not be in the hierarchy yet; retry next run loop
             DispatchQueue.main.async { [weak self] in
                 self?.findAndObserveRowView()
             }
         }
     }
 
+    private func notifyChange() {
+        guard let rowView else { return }
+        let highlighted = rowView.isSelected && rowView.isEmphasized
+        DispatchQueue.main.async { [weak self] in
+            self?.onSelectionChange?(highlighted)
+        }
+    }
+
     @discardableResult
     private func findAndObserveRowView() -> Bool {
-        guard observation == nil else { return true }
+        guard selectedObservation == nil else { return true }
 
         var current: NSView? = superview
         while let view = current {
-            if let rowView = view as? NSTableRowView {
-                observation = rowView.observe(\.isSelected, options: [.new, .initial]) { [weak self] row, _ in
-                    DispatchQueue.main.async {
-                        self?.onSelectionChange?(row.isSelected)
-                    }
+            if let row = view as? NSTableRowView {
+                rowView = row
+                selectedObservation = row.observe(\.isSelected, options: [.new, .initial]) { [weak self] _, _ in
+                    self?.notifyChange()
+                }
+                emphasizedObservation = row.observe(\.isEmphasized, options: [.new]) { [weak self] _, _ in
+                    self?.notifyChange()
                 }
                 return true
             }
