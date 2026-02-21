@@ -81,14 +81,14 @@ struct StoryCardView: View {
         ZStack {
             LinearGradient(
                 colors: colorScheme == .dark
-                    ? [Color.orange.opacity(0.15), Color.orange.opacity(0.05)]
-                    : [Color.orange.opacity(0.12), Color.orange.opacity(0.05)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                    ? [Color.orange.opacity(0.45), Color.orange.opacity(0.15), Color.orange.opacity(0.05)]
+                    : [Color.orange.opacity(0.35), Color.orange.opacity(0.12), Color.orange.opacity(0.05)],
+                startPoint: .top,
+                endPoint: .bottom
             )
             Image(systemName: "doc.richtext")
                 .font(.system(size: 32 * textScale))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.25) : Color.orange.opacity(0.3))
         }
     }
 
