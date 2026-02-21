@@ -35,6 +35,7 @@ final class FeedViewModel {
     var findPreviousTrigger = UUID()
     var goBackTrigger = UUID()
     var goForwardTrigger = UUID()
+    var refreshTrigger = UUID()
     var searchQuery: String = ""
     var isSearchActive: Bool { !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty }
     var isLoading = false

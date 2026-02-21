@@ -69,6 +69,11 @@ struct Hacker_NewsApp: App {
                 .disabled(!feedViewModel.showFindBar || feedViewModel.findQuery.isEmpty)
             }
             CommandGroup(after: .sidebar) {
+                Button("Reload Page") {
+                    feedViewModel.refreshTrigger = UUID()
+                }
+                .keyboardShortcut("r", modifiers: .command)
+
                 Button("Back") {
                     feedViewModel.goBackTrigger = UUID()
                 }

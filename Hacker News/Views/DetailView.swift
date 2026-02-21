@@ -93,6 +93,10 @@ struct DetailView: View {
         .onChange(of: viewModel.goForwardTrigger) {
             webViewProxy.goForward()
         }
+        .onChange(of: viewModel.refreshTrigger) {
+            webViewID = UUID()
+            Task { await viewModel.loadFeed() }
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button {
