@@ -1,5 +1,18 @@
 import Foundation
 import Observation
+import SwiftUI
+
+enum AppearanceMode: String, CaseIterable {
+    case system, light, dark
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
 
 @Observable
 final class FeedViewModel {
@@ -86,6 +99,12 @@ final class FeedViewModel {
         }
     }
 
+    var appearanceMode: AppearanceMode {
+        didSet {
+            UserDefaults.standard.set(appearanceMode.rawValue, forKey: "appearanceMode")
+        }
+    }
+
     func increaseTextScale() {
         textScale = min(1.5, textScale + 0.1)
     }
@@ -109,6 +128,7 @@ final class FeedViewModel {
         self.adBlockingEnabled = UserDefaults.standard.object(forKey: "adBlockingEnabled") as? Bool ?? true
         self.popUpBlockingEnabled = UserDefaults.standard.object(forKey: "popUpBlockingEnabled") as? Bool ?? true
         self.textScale = UserDefaults.standard.object(forKey: "textScale") as? Double ?? 1.0
+        self.appearanceMode = (UserDefaults.standard.string(forKey: "appearanceMode")).flatMap(AppearanceMode.init(rawValue:)) ?? .system
         if let data = UserDefaults.standard.data(forKey: bookmarksKey),
            let items = try? JSONDecoder().decode([HNItem].self, from: data) {
             self.bookmarkedItems = items

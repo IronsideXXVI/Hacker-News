@@ -34,6 +34,7 @@ struct Hacker_NewsApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(viewModel: feedViewModel)
+                .preferredColorScheme(feedViewModel.appearanceMode.colorScheme)
                 .environment(\.updater, updaterController.updater)
                 .environmentObject(checkForUpdatesViewModel)
                 .onAppear {

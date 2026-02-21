@@ -9,6 +9,17 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                Picker("Appearance", selection: $viewModel.appearanceMode) {
+                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue.capitalized).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("Appearance")
+            }
+
+            Section {
                 HStack {
                     Text("Text Size")
                     Spacer()
@@ -30,7 +41,7 @@ struct SettingsView: View {
                 }
                 .disabled(viewModel.textScale == 1.0)
             } header: {
-                Text("Appearance")
+                Text("Text Size")
             }
 
             Section {
