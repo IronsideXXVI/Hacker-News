@@ -35,7 +35,8 @@ struct ContentView: View {
             applyAppearance(viewModel.appearanceMode)
         }
         .frame(minWidth: 900, minHeight: 600)
-        .navigationTitle(tabTitle)
+        .navigationTitle("")
+        .background(WindowTabTitleSetter(title: tabTitle))
         .focusedSceneValue(\.feedViewModel, viewModel)
     }
 
@@ -64,6 +65,22 @@ struct ContentView: View {
             return title + suffix
         }
         return "Homepage"
+    }
+
+    private struct WindowTabTitleSetter: NSViewRepresentable {
+        let title: String
+
+        func makeNSView(context: Context) -> NSView {
+            let view = NSView()
+            DispatchQueue.main.async {
+                view.window?.tab.title = title
+            }
+            return view
+        }
+
+        func updateNSView(_ nsView: NSView, context: Context) {
+            nsView.window?.tab.title = title
+        }
     }
 
     private func applyAppearance(_ mode: AppearanceMode) {
