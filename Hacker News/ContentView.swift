@@ -35,7 +35,7 @@ struct ContentView: View {
             applyAppearance(viewModel.appearanceMode)
         }
         .frame(minWidth: 900, minHeight: 600)
-        .navigationTitle("")
+        .navigationTitle("Hacker News")
         .background(WindowTabTitleSetter(title: tabTitle))
         .focusedSceneValue(\.feedViewModel, viewModel)
     }
