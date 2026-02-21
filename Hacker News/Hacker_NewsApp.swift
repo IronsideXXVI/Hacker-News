@@ -91,15 +91,21 @@ struct Hacker_NewsApp: App {
                 Divider()
 
                 Button("Show Post") {
-                    feedViewModel.preferArticleView = true
+                    feedViewModel.viewMode = .post
                 }
                 .keyboardShortcut("1", modifiers: .command)
                 .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
 
                 Button("Show Comments") {
-                    feedViewModel.preferArticleView = false
+                    feedViewModel.viewMode = .comments
                 }
                 .keyboardShortcut("2", modifiers: .command)
+                .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
+
+                Button("Show Both") {
+                    feedViewModel.viewMode = .both
+                }
+                .keyboardShortcut("3", modifiers: .command)
                 .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
 
                 Divider()

@@ -16,209 +16,175 @@ struct DetailView: View {
     @State private var webViewProxy = WebViewProxy()
     @State private var webViewID = UUID()
 
+    // Split mode: comments pane state
+    @State private var commentsScrollProgress: Double = 0.0
+    @State private var isCommentsWebViewLoading = true
+    @State private var commentsWebLoadError: String?
+    @State private var showCommentsError = false
+    @State private var commentsErrorRevealTask: Task<Void, Never>?
+    @State private var showCommentsContent = false
+    @State private var commentsMinDelayMet = false
+    @State private var commentsMinDelayTask: Task<Void, Never>?
+    @State private var commentsWebViewProxy = WebViewProxy()
+    @State private var commentsWebViewID = UUID()
+
+    @ViewBuilder
+    private var mainContent: some View {
+        if viewModel.showingSettings {
+            SettingsView(viewModel: viewModel)
+        } else if let profileURL = viewModel.viewingUserProfileURL {
+            profileContentView(url: profileURL)
+        } else if let story = viewModel.selectedStory {
+            storyContentView(for: story)
+        } else {
+            VStack(spacing: 8) {
+                Image(systemName: "doc.richtext")
+                    .font(.system(size: 48 * viewModel.textScale))
+                    .foregroundStyle(.tertiary)
+                Text("Select a story")
+                    .font(.system(size: 17 * viewModel.textScale))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var contentWithChangeHandlers: some View {
+        mainContent
+            .onChange(of: viewModel.selectedStory) { beginNavigation() }
+            .onChange(of: viewModel.viewMode) { beginNavigation() }
+            .onChange(of: viewModel.viewingUserProfileURL) { beginNavigation() }
+            .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
+            .onChange(of: isWebViewLoading) { handlePrimaryLoadingChange() }
+            .onChange(of: minDelayMet) { if minDelayMet && !isWebViewLoading { showContent = true } }
+            .onChange(of: commentsWebLoadError) { if commentsWebLoadError == nil { showCommentsError = false; commentsErrorRevealTask?.cancel() } }
+            .onChange(of: isCommentsWebViewLoading) { handleCommentsLoadingChange() }
+            .onChange(of: commentsMinDelayMet) { if commentsMinDelayMet && !isCommentsWebViewLoading { showCommentsContent = true } }
+    }
+
     var body: some View {
-        Group {
-            if viewModel.showingSettings {
-                SettingsView(viewModel: viewModel)
-            } else if let profileURL = viewModel.viewingUserProfileURL {
-                VStack(spacing: 0) {
-                    scrollProgressBar()
-                    if viewModel.showFindBar { findBar() }
-                    ZStack {
-                        ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
-                            .id(webViewID)
-                            .opacity(showContent ? 1 : 0)
-                            .animation(.easeIn(duration: 0.2), value: showContent)
-                        if !showContent {
-                            webLoadingOverlay
-                        }
-                        if showError, let error = webLoadError {
-                            webErrorView(error: error, url: profileURL)
-                        }
-                    }
+        contentWithChangeHandlers
+            .onChange(of: viewModel.webRefreshID) { webViewID = UUID(); commentsWebViewID = UUID() }
+            .onChange(of: viewModel.showFindBar) { if !viewModel.showFindBar { viewModel.findQuery = ""; webViewProxy.clearSelection() } }
+            .onChange(of: viewModel.findNextTrigger) { webViewProxy.findNext(viewModel.findQuery) }
+            .onChange(of: viewModel.findPreviousTrigger) { webViewProxy.findPrevious(viewModel.findQuery) }
+            .onChange(of: viewModel.goBackTrigger) { webViewProxy.goBack() }
+            .onChange(of: viewModel.goForwardTrigger) { webViewProxy.goForward() }
+            .onChange(of: viewModel.refreshTrigger) { webViewID = UUID(); commentsWebViewID = UUID(); Task { await viewModel.loadFeed() } }
+            .toolbar { detailToolbarContent }
+            .sheet(isPresented: $showingLoginSheet) {
+                LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
+            }
+    }
+
+    @ToolbarContentBuilder
+    private var detailToolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .navigation) {
+            Button {
+                withAnimation {
+                    columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
                 }
-            } else if let story = viewModel.selectedStory {
-                VStack(spacing: 0) {
-                    storyInfoBar(for: story)
-                    scrollProgressBar()
-                    if viewModel.showFindBar { findBar() }
-                    ZStack {
-                        articleOrCommentsView(for: story)
-                            .opacity(showContent ? 1 : 0)
-                            .animation(.easeIn(duration: 0.2), value: showContent)
-                        if !showContent {
-                            webLoadingOverlay
-                        }
-                        if showError, let error = webLoadError {
-                            webErrorView(error: error, url: currentExternalURL)
-                        }
+            } label: {
+                Image(systemName: "sidebar.leading")
+            }
+            .help("Toggle Sidebar")
+            .keyboardShortcut("s", modifiers: [.command, .control])
+            if webViewProxy.canGoBack || webViewProxy.canGoForward {
+                Button {
+                    webViewProxy.goBack()
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .help("Back")
+                .disabled(!webViewProxy.canGoBack)
+                Button {
+                    webViewProxy.goForward()
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .help("Forward")
+                .disabled(!webViewProxy.canGoForward)
+            }
+            Button {
+                webViewID = UUID()
+                commentsWebViewID = UUID()
+                Task { await viewModel.loadFeed() }
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .help("Refresh")
+            Button {
+                viewModel.selectedStory = nil
+                viewModel.viewingUserProfileURL = nil
+                viewModel.showingSettings = false
+            } label: {
+                Image(systemName: "house")
+            }
+            .help("Home")
+            if let story = viewModel.selectedStory {
+                Button {
+                    viewModel.toggleBookmark(story)
+                } label: {
+                    Image(systemName: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
+                }
+                .help(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Add Bookmark")
+            }
+            if let url = currentExternalURL {
+                ShareLink(item: url) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .help("Share")
+            }
+            if currentExternalURL != nil {
+                Button {
+                    if let url = currentExternalURL {
+                        NSWorkspace.shared.open(url)
                     }
+                } label: {
+                    Image(systemName: "safari")
+                }
+                .help("Open in Browser")
+            }
+        }
+        ToolbarItem(placement: .navigation) {
+            if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" && viewModel.selectedStory?.displayURL != nil {
+                Picker("View", selection: $viewModel.viewMode) {
+                    Text("Post").tag(ViewMode.post)
+                    Text("Comments").tag(ViewMode.comments)
+                    Image(systemName: "rectangle.split.2x1").tag(ViewMode.both)
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        ToolbarItem(placement: .automatic) {
+            if authManager.isLoggedIn {
+                Button {
+                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
+                } label: {
+                    Text("Submit")
+                        .foregroundStyle(.primary)
+                }
+            }
+        }
+        ToolbarItemGroup(placement: .automatic) {
+            if authManager.isLoggedIn {
+                Button {
+                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)")
+                } label: {
+                    Text("\(authManager.username) (\(authManager.karma))")
+                }
+                Button("Logout") {
+                    Task { await authManager.logout() }
                 }
             } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "doc.richtext")
-                        .font(.system(size: 48 * viewModel.textScale))
-                        .foregroundStyle(.tertiary)
-                    Text("Select a story")
-                        .font(.system(size: 17 * viewModel.textScale))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Button("Login") { showingLoginSheet = true }
             }
         }
-        .onChange(of: viewModel.selectedStory) { beginNavigation() }
-        .onChange(of: viewModel.preferArticleView) { beginNavigation() }
-        .onChange(of: viewModel.viewingUserProfileURL) { beginNavigation() }
-        .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
-        .onChange(of: isWebViewLoading) {
-            if isWebViewLoading {
-                showContent = false
-                minDelayMet = false
-                minDelayTask?.cancel()
-                minDelayTask = Task {
-                    try? await Task.sleep(for: .milliseconds(400))
-                    guard !Task.isCancelled else { return }
-                    minDelayMet = true
-                }
-            } else if minDelayMet {
-                showContent = true
+        ToolbarItem(placement: .automatic) {
+            Button { viewModel.showingSettings = true } label: {
+                Image(systemName: "gearshape")
             }
-        }
-        .onChange(of: minDelayMet) { if minDelayMet && !isWebViewLoading { showContent = true } }
-        .onChange(of: viewModel.webRefreshID) {
-            webViewID = UUID()
-        }
-        .onChange(of: viewModel.showFindBar) {
-            if !viewModel.showFindBar {
-                viewModel.findQuery = ""
-                webViewProxy.clearSelection()
-            }
-        }
-        .onChange(of: viewModel.findNextTrigger) {
-            webViewProxy.findNext(viewModel.findQuery)
-        }
-        .onChange(of: viewModel.findPreviousTrigger) {
-            webViewProxy.findPrevious(viewModel.findQuery)
-        }
-        .onChange(of: viewModel.goBackTrigger) {
-            webViewProxy.goBack()
-        }
-        .onChange(of: viewModel.goForwardTrigger) {
-            webViewProxy.goForward()
-        }
-        .onChange(of: viewModel.refreshTrigger) {
-            webViewID = UUID()
-            Task { await viewModel.loadFeed() }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button {
-                    withAnimation {
-                        columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-                    }
-                } label: {
-                    Image(systemName: "sidebar.leading")
-                }
-                .help("Toggle Sidebar")
-                .keyboardShortcut("s", modifiers: [.command, .control])
-                if webViewProxy.canGoBack || webViewProxy.canGoForward {
-                    Button {
-                        webViewProxy.goBack()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                    }
-                    .help("Back")
-                    .disabled(!webViewProxy.canGoBack)
-                    Button {
-                        webViewProxy.goForward()
-                    } label: {
-                        Image(systemName: "chevron.right")
-                    }
-                    .help("Forward")
-                    .disabled(!webViewProxy.canGoForward)
-                }
-                Button {
-                    webViewID = UUID()
-                    Task { await viewModel.loadFeed() }
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Refresh")
-                Button {
-                    viewModel.selectedStory = nil
-                    viewModel.viewingUserProfileURL = nil
-                    viewModel.showingSettings = false
-                } label: {
-                    Image(systemName: "house")
-                }
-                .help("Home")
-                if let story = viewModel.selectedStory {
-                    Button {
-                        viewModel.toggleBookmark(story)
-                    } label: {
-                        Image(systemName: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
-                    }
-                    .help(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Add Bookmark")
-                }
-                if let url = currentExternalURL {
-                    ShareLink(item: url) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    .help("Share")
-                }
-                if currentExternalURL != nil {
-                    Button {
-                        if let url = currentExternalURL {
-                            NSWorkspace.shared.open(url)
-                        }
-                    } label: {
-                        Image(systemName: "safari")
-                    }
-                    .help("Open in Browser")
-                }
-            }
-            ToolbarItem(placement: .navigation) {
-                if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" && viewModel.selectedStory?.displayURL != nil {
-                    Picker("View", selection: $viewModel.preferArticleView) {
-                        Text("Post").tag(true)
-                        Text("Comments").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                }
-            }
-            ToolbarItem(placement: .automatic) {
-                if authManager.isLoggedIn {
-                    Button {
-                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
-                    } label: {
-                        Text("Submit")
-                            .foregroundStyle(.primary)
-                    }
-                }
-            }
-            ToolbarItemGroup(placement: .automatic) {
-                if authManager.isLoggedIn {
-                    Button {
-                        viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)")
-                    } label: {
-                        Text("\(authManager.username) (\(authManager.karma))")
-                    }
-                    Button("Logout") {
-                        Task { await authManager.logout() }
-                    }
-                } else {
-                    Button("Login") { showingLoginSheet = true }
-                }
-            }
-            ToolbarItem(placement: .automatic) {
-                Button { viewModel.showingSettings = true } label: {
-                    Image(systemName: "gearshape")
-                }
-                .help("Settings")
-            }
-        }
-        .sheet(isPresented: $showingLoginSheet) {
-            LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
+            .help("Settings")
         }
     }
 
@@ -320,6 +286,50 @@ struct DetailView: View {
     }
 
     @ViewBuilder
+    private func profileContentView(url profileURL: URL) -> some View {
+        VStack(spacing: 0) {
+            scrollProgressBar()
+            if viewModel.showFindBar { findBar() }
+            ZStack {
+                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                    .id(webViewID)
+                    .opacity(showContent ? 1 : 0)
+                    .animation(.easeIn(duration: 0.2), value: showContent)
+                if !showContent {
+                    webLoadingOverlay
+                }
+                if showError, let error = webLoadError {
+                    webErrorView(error: error, url: profileURL)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func storyContentView(for story: HNItem) -> some View {
+        VStack(spacing: 0) {
+            storyInfoBar(for: story)
+            scrollProgressBar()
+            if viewModel.showFindBar { findBar() }
+            if viewModel.viewMode == .both && story.type != "comment" && story.displayURL != nil {
+                articleOrCommentsView(for: story)
+            } else {
+                ZStack {
+                    articleOrCommentsView(for: story)
+                        .opacity(showContent ? 1 : 0)
+                        .animation(.easeIn(duration: 0.2), value: showContent)
+                    if !showContent {
+                        webLoadingOverlay
+                    }
+                    if showError, let error = webLoadError {
+                        webErrorView(error: error, url: currentExternalURL)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
     private func storyInfoBar(for story: HNItem) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             if story.type == "comment" {
@@ -404,6 +414,36 @@ struct DetailView: View {
         Divider()
     }
 
+    private func handlePrimaryLoadingChange() {
+        if isWebViewLoading {
+            showContent = false
+            minDelayMet = false
+            minDelayTask?.cancel()
+            minDelayTask = Task {
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled else { return }
+                minDelayMet = true
+            }
+        } else if minDelayMet {
+            showContent = true
+        }
+    }
+
+    private func handleCommentsLoadingChange() {
+        if isCommentsWebViewLoading {
+            showCommentsContent = false
+            commentsMinDelayMet = false
+            commentsMinDelayTask?.cancel()
+            commentsMinDelayTask = Task {
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled else { return }
+                commentsMinDelayMet = true
+            }
+        } else if commentsMinDelayMet {
+            showCommentsContent = true
+        }
+    }
+
     private func beginNavigation() {
         scrollProgress = 0
         isWebViewLoading = true
@@ -419,6 +459,21 @@ struct DetailView: View {
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
             minDelayMet = true
+        }
+
+        commentsScrollProgress = 0
+        isCommentsWebViewLoading = true
+        commentsWebLoadError = nil
+        showCommentsError = false
+        showCommentsContent = false
+        commentsMinDelayMet = false
+        commentsWebViewID = UUID()
+        scheduleCommentsErrorReveal()
+        commentsMinDelayTask?.cancel()
+        commentsMinDelayTask = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            commentsMinDelayMet = true
         }
     }
 
@@ -440,6 +495,15 @@ struct DetailView: View {
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, webLoadError != nil else { return }
             showError = true
+        }
+    }
+
+    private func scheduleCommentsErrorReveal() {
+        commentsErrorRevealTask?.cancel()
+        commentsErrorRevealTask = Task {
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled, commentsWebLoadError != nil else { return }
+            showCommentsError = true
         }
     }
 
@@ -472,7 +536,9 @@ struct DetailView: View {
         if story.type == "comment" {
             ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(webViewID)
-        } else if viewModel.preferArticleView, let articleURL = story.displayURL {
+        } else if viewModel.viewMode == .both, let articleURL = story.displayURL {
+            splitView(articleURL: articleURL, commentsURL: story.commentsURL)
+        } else if viewModel.viewMode == .post, let articleURL = story.displayURL {
             ArticleWebView(url: articleURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                 .id(webViewID)
         } else {
@@ -481,14 +547,70 @@ struct DetailView: View {
         }
     }
 
+    @ViewBuilder
+    private func splitView(articleURL: URL, commentsURL: URL) -> some View {
+        HSplitView {
+            ZStack {
+                ArticleWebView(
+                    url: articleURL,
+                    adBlockingEnabled: viewModel.adBlockingEnabled,
+                    popUpBlockingEnabled: viewModel.popUpBlockingEnabled,
+                    textScale: viewModel.textScale,
+                    webViewProxy: webViewProxy,
+                    scrollProgress: $scrollProgress,
+                    isLoading: $isWebViewLoading,
+                    loadError: $webLoadError
+                )
+                .id(webViewID)
+                .opacity(showContent ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: showContent)
+
+                if !showContent {
+                    webLoadingOverlay
+                }
+                if showError, let error = webLoadError {
+                    webErrorView(error: error, url: articleURL)
+                }
+            }
+            .frame(minWidth: 300)
+
+            ZStack {
+                ArticleWebView(
+                    url: commentsURL,
+                    adBlockingEnabled: viewModel.adBlockingEnabled,
+                    popUpBlockingEnabled: viewModel.popUpBlockingEnabled,
+                    textScale: viewModel.textScale,
+                    webViewProxy: commentsWebViewProxy,
+                    scrollProgress: $commentsScrollProgress,
+                    isLoading: $isCommentsWebViewLoading,
+                    loadError: $commentsWebLoadError
+                )
+                .id(commentsWebViewID)
+                .opacity(showCommentsContent ? 1 : 0)
+                .animation(.easeIn(duration: 0.2), value: showCommentsContent)
+
+                if !showCommentsContent {
+                    webLoadingOverlay
+                }
+                if showCommentsError, let error = commentsWebLoadError {
+                    webErrorView(error: error, url: commentsURL)
+                }
+            }
+            .frame(minWidth: 300)
+        }
+    }
+
     private var currentExternalURL: URL? {
         if let profileURL = viewModel.viewingUserProfileURL {
             return profileURL
         }
         guard let story = viewModel.selectedStory else { return nil }
-        if viewModel.preferArticleView, let articleURL = story.displayURL {
-            return articleURL
+        switch viewModel.viewMode {
+        case .post, .both:
+            if let articleURL = story.displayURL { return articleURL }
+            return story.commentsURL
+        case .comments:
+            return story.commentsURL
         }
-        return story.commentsURL
     }
 }

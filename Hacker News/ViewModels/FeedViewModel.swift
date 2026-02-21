@@ -2,6 +2,10 @@ import Foundation
 import Observation
 import SwiftUI
 
+enum ViewMode: String, CaseIterable {
+    case post, comments, both
+}
+
 enum AppearanceMode: String, CaseIterable {
     case light, dark, system
 
@@ -75,8 +79,8 @@ final class FeedViewModel {
         }
     }
 
-    var preferArticleView: Bool {
-        didSet { UserDefaults.standard.set(preferArticleView, forKey: "preferArticleView") }
+    var viewMode: ViewMode {
+        didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: "viewMode") }
     }
 
     var adBlockingEnabled: Bool {
@@ -124,7 +128,16 @@ final class FeedViewModel {
     private var isFetchingMore = false
 
     init() {
-        self.preferArticleView = UserDefaults.standard.object(forKey: "preferArticleView") as? Bool ?? true
+        if let raw = UserDefaults.standard.string(forKey: "viewMode"),
+           let mode = ViewMode(rawValue: raw) {
+            self.viewMode = mode
+        } else {
+            let legacy = UserDefaults.standard.object(forKey: "preferArticleView") as? Bool ?? true
+            let migrated: ViewMode = legacy ? .post : .comments
+            self.viewMode = migrated
+            UserDefaults.standard.set(migrated.rawValue, forKey: "viewMode")
+            UserDefaults.standard.removeObject(forKey: "preferArticleView")
+        }
         self.adBlockingEnabled = UserDefaults.standard.object(forKey: "adBlockingEnabled") as? Bool ?? true
         self.popUpBlockingEnabled = UserDefaults.standard.object(forKey: "popUpBlockingEnabled") as? Bool ?? true
         self.textScale = UserDefaults.standard.object(forKey: "textScale") as? Double ?? 1.0
