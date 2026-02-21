@@ -8,8 +8,10 @@ A native macOS client for [Hacker News](https://news.ycombinator.com), built wit
 
 ## Screenshots
 
+![Stories Grid](.github/screenshots/stories-grid.png)
 ![Article View](.github/screenshots/article-view.png)
 ![Comments View](.github/screenshots/comments-view.png)
+![Discussion View](.github/screenshots/discussion-view.png)
 
 ## Features
 
