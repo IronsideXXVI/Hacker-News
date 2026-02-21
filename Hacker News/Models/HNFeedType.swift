@@ -6,6 +6,7 @@ enum HNContentType: String, CaseIterable, Identifiable {
     case showHN
     case jobs
     case comments
+    case threads
     case bookmarks
 
     var id: String { rawValue }
@@ -17,6 +18,7 @@ enum HNContentType: String, CaseIterable, Identifiable {
         case .showHN: "Show"
         case .jobs: "Jobs"
         case .comments: "Comments"
+        case .threads: "Threads"
         case .bookmarks: "Bookmarks"
         }
     }
@@ -28,13 +30,16 @@ enum HNContentType: String, CaseIterable, Identifiable {
         case .showHN: "show_hn"
         case .jobs: "job"
         case .comments: "comment"
+        case .threads: "comment"
         case .bookmarks: nil
         }
     }
 
     var isAll: Bool { self == .all }
     var isComments: Bool { self == .comments }
+    var isThreads: Bool { self == .threads }
     var isBookmarks: Bool { self == .bookmarks }
+    var requiresAuth: Bool { self == .threads }
 }
 
 enum HNDateRange: String, CaseIterable, Identifiable {

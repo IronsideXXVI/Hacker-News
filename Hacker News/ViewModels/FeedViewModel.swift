@@ -44,6 +44,8 @@ final class FeedViewModel {
     private var currentLoadTask: Task<Void, Never>?
     private var loadingIndicatorTask: Task<Void, Never>?
 
+    var loggedInUsername: String?
+
     var contentType: HNContentType = .all {
         didSet {
             if oldValue != contentType { resetAndReload() }
@@ -157,7 +159,8 @@ final class FeedViewModel {
         }
 
         do {
-            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: 0)
+            let author = contentType.isThreads ? loggedInUsername : nil
+            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: 0, author: author)
             guard !Task.isCancelled else { return }
             stories = result.items
             hasMore = result.hasMore
@@ -180,7 +183,8 @@ final class FeedViewModel {
 
         isFetchingMore = true
         do {
-            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: currentPage)
+            let author = contentType.isThreads ? loggedInUsername : nil
+            let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: currentPage, author: author)
             stories.append(contentsOf: result.items)
             hasMore = result.hasMore
             currentPage += 1
@@ -216,7 +220,8 @@ final class FeedViewModel {
         startLoadingIndicatorDelay()
 
         do {
-            let results = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange, displaySort: displaySort)
+            let author = contentType.isThreads ? loggedInUsername : nil
+            let results = try await HNService.searchStories(query: query, contentType: contentType, dateRange: dateRange, displaySort: displaySort, author: author)
             guard !Task.isCancelled else { return }
             stories = results
         } catch is CancellationError {

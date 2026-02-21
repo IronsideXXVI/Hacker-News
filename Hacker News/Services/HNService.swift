@@ -31,14 +31,16 @@ struct AlgoliaHit: Codable {
 struct HNService {
     private static let baseURL = "https://hacker-news.firebaseio.com/v0/"
 
-    static func fetchFeed(contentType: HNContentType, dateRange: HNDateRange, displaySort: HNDisplaySort, page: Int = 0, hitsPerPage: Int = 30) async throws -> (items: [HNItem], hasMore: Bool) {
+    static func fetchFeed(contentType: HNContentType, dateRange: HNDateRange, displaySort: HNDisplaySort, page: Int = 0, hitsPerPage: Int = 30, author: String? = nil) async throws -> (items: [HNItem], hasMore: Bool) {
         var components = URLComponents(string: displaySort.algoliaEndpoint)!
         var queryItems = [
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "hitsPerPage", value: String(hitsPerPage))
         ]
         if let tag = contentType.algoliaTag {
-            queryItems.append(URLQueryItem(name: "tags", value: tag))
+            var tagValue = tag
+            if let author { tagValue += ",author_\(author)" }
+            queryItems.append(URLQueryItem(name: "tags", value: tagValue))
         }
         if let timestamp = dateRange.startTimestamp {
             queryItems.append(URLQueryItem(name: "numericFilters", value: "created_at_i>\(timestamp)"))
@@ -50,7 +52,7 @@ struct HNService {
 
         let items: [HNItem] = response.hits.compactMap { hit in
             guard let id = Int(hit.objectID) else { return nil }
-            let type = contentType.isAll ? hit.inferredType : (contentType.isComments ? "comment" : "story")
+            let type = contentType.isAll ? hit.inferredType : ((contentType.isComments || contentType.isThreads) ? "comment" : "story")
             return HNItem(
                 id: id,
                 type: type,
@@ -69,13 +71,15 @@ struct HNService {
         return (items, page + 1 < response.nbPages)
     }
 
-    static func searchStories(query: String, contentType: HNContentType, dateRange: HNDateRange, displaySort: HNDisplaySort) async throws -> [HNItem] {
+    static func searchStories(query: String, contentType: HNContentType, dateRange: HNDateRange, displaySort: HNDisplaySort, author: String? = nil) async throws -> [HNItem] {
         var components = URLComponents(string: displaySort.algoliaEndpoint)!
         var queryItems = [
             URLQueryItem(name: "query", value: query)
         ]
         if let tag = contentType.algoliaTag {
-            queryItems.append(URLQueryItem(name: "tags", value: tag))
+            var tagValue = tag
+            if let author { tagValue += ",author_\(author)" }
+            queryItems.append(URLQueryItem(name: "tags", value: tagValue))
         }
         if let timestamp = dateRange.startTimestamp {
             queryItems.append(URLQueryItem(name: "numericFilters", value: "created_at_i>\(timestamp)"))
@@ -86,7 +90,7 @@ struct HNService {
         let response = try JSONDecoder().decode(AlgoliaResponse.self, from: data)
         return response.hits.compactMap { hit -> HNItem? in
             guard let id = Int(hit.objectID) else { return nil }
-            let type = contentType.isAll ? hit.inferredType : (contentType.isComments ? "comment" : "story")
+            let type = contentType.isAll ? hit.inferredType : ((contentType.isComments || contentType.isThreads) ? "comment" : "story")
             return HNItem(
                 id: id,
                 type: type,

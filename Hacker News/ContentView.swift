@@ -19,7 +19,14 @@ struct ContentView: View {
         }
         .task {
             await authManager.restoreSession()
+            viewModel.loggedInUsername = authManager.isLoggedIn ? authManager.username : nil
             await viewModel.loadFeed()
+        }
+        .onChange(of: authManager.isLoggedIn) {
+            viewModel.loggedInUsername = authManager.isLoggedIn ? authManager.username : nil
+            if !authManager.isLoggedIn && viewModel.contentType.requiresAuth {
+                viewModel.contentType = .all
+            }
         }
         .frame(minWidth: 900, minHeight: 600)
     }

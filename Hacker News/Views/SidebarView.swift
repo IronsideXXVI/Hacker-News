@@ -8,7 +8,7 @@ struct SidebarView: View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Picker("Content", selection: $viewModel.contentType) {
-                    ForEach(HNContentType.allCases) { type in
+                    ForEach(HNContentType.allCases.filter { !$0.requiresAuth || viewModel.loggedInUsername != nil }) { type in
                         Text(type.displayName).tag(type)
                     }
                 }
@@ -81,7 +81,7 @@ struct SidebarView: View {
             } else if viewModel.showLoadingIndicator && viewModel.stories.isEmpty {
                 VStack {
                     Spacer()
-                    ProgressView(viewModel.contentType.isComments ? "Loading comments..." : viewModel.contentType.isAll ? "Loading feed..." : "Loading stories...")
+                    ProgressView(viewModel.contentType.isComments ? "Loading comments..." : viewModel.contentType.isThreads ? "Loading threads..." : viewModel.contentType.isAll ? "Loading feed..." : "Loading stories...")
                         .font(.system(size: 13 * viewModel.textScale))
                     Spacer()
                 }
