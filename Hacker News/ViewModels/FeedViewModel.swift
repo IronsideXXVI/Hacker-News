@@ -291,7 +291,6 @@ final class FeedViewModel {
     private func resetAndReload() {
         currentLoadTask?.cancel()
 
-        selectedStory = nil
         stories = []
         currentPage = 0
         hasMore = false
