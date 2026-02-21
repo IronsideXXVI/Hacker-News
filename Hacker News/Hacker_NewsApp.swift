@@ -12,11 +12,22 @@ extension EnvironmentValues {
     }
 }
 
+struct FocusedFeedViewModelKey: FocusedValueKey {
+    typealias Value = FeedViewModel
+}
+
+extension FocusedValues {
+    var feedViewModel: FeedViewModel? {
+        get { self[FocusedFeedViewModelKey.self] }
+        set { self[FocusedFeedViewModelKey.self] = newValue }
+    }
+}
+
 @main
 struct Hacker_NewsApp: App {
     private let updaterController: SPUStandardUpdaterController
     @StateObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
-    @State private var feedViewModel = FeedViewModel()
+    @FocusedValue(\.feedViewModel) private var feedViewModel
 
     init() {
         ArticleWebView.precompileAdBlockRules()
@@ -37,17 +48,13 @@ struct Hacker_NewsApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(viewModel: feedViewModel)
+            ContentView()
                 .environment(\.updater, updaterController.updater)
                 .environmentObject(checkForUpdatesViewModel)
                 .onAppear {
-                    applyAppearance(feedViewModel.appearanceMode)
                     if updaterController.updater.automaticallyChecksForUpdates {
                         updaterController.updater.checkForUpdatesInBackground()
                     }
-                }
-                .onChange(of: feedViewModel.appearanceMode) {
-                    applyAppearance(feedViewModel.appearanceMode)
                 }
         }
         .defaultSize(width: 1200, height: 800)
@@ -60,83 +67,82 @@ struct Hacker_NewsApp: App {
             }
             CommandGroup(after: .textEditing) {
                 Button("Find...") {
-                    feedViewModel.showFindBar.toggle()
+                    feedViewModel?.showFindBar.toggle()
                 }
                 .keyboardShortcut("f", modifiers: .command)
+                .disabled(feedViewModel == nil)
 
                 Button("Find Next") {
-                    feedViewModel.findNextTrigger = UUID()
+                    feedViewModel?.findNextTrigger = UUID()
                 }
                 .keyboardShortcut("g", modifiers: .command)
-                .disabled(!feedViewModel.showFindBar || feedViewModel.findQuery.isEmpty)
+                .disabled(feedViewModel == nil || !(feedViewModel?.showFindBar ?? false) || (feedViewModel?.findQuery.isEmpty ?? true))
 
                 Button("Find Previous") {
-                    feedViewModel.findPreviousTrigger = UUID()
+                    feedViewModel?.findPreviousTrigger = UUID()
                 }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
-                .disabled(!feedViewModel.showFindBar || feedViewModel.findQuery.isEmpty)
+                .disabled(feedViewModel == nil || !(feedViewModel?.showFindBar ?? false) || (feedViewModel?.findQuery.isEmpty ?? true))
             }
             CommandGroup(after: .sidebar) {
                 Button("Reload Page") {
-                    feedViewModel.refreshTrigger = UUID()
+                    feedViewModel?.refreshTrigger = UUID()
                 }
                 .keyboardShortcut("r", modifiers: .command)
+                .disabled(feedViewModel == nil)
 
                 Button("Back") {
-                    feedViewModel.goBackTrigger = UUID()
+                    feedViewModel?.goBackTrigger = UUID()
                 }
                 .keyboardShortcut("[", modifiers: .command)
+                .disabled(feedViewModel == nil)
 
                 Button("Forward") {
-                    feedViewModel.goForwardTrigger = UUID()
+                    feedViewModel?.goForwardTrigger = UUID()
                 }
                 .keyboardShortcut("]", modifiers: .command)
+                .disabled(feedViewModel == nil)
 
                 Divider()
 
                 Button("Show Post") {
-                    feedViewModel.viewMode = .post
+                    feedViewModel?.viewMode = .post
                 }
                 .keyboardShortcut("1", modifiers: .command)
-                .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
+                .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
 
                 Button("Show Comments") {
-                    feedViewModel.viewMode = .comments
+                    feedViewModel?.viewMode = .comments
                 }
                 .keyboardShortcut("2", modifiers: .command)
-                .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
+                .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
 
                 Button("Show Both") {
-                    feedViewModel.viewMode = .both
+                    feedViewModel?.viewMode = .both
                 }
                 .keyboardShortcut("3", modifiers: .command)
-                .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
+                .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
 
                 Divider()
 
                 Button("Zoom In") {
-                    feedViewModel.increaseTextScale()
+                    feedViewModel?.increaseTextScale()
                 }
                 .keyboardShortcut("=", modifiers: .command)
+                .disabled(feedViewModel == nil)
 
                 Button("Zoom Out") {
-                    feedViewModel.decreaseTextScale()
+                    feedViewModel?.decreaseTextScale()
                 }
                 .keyboardShortcut("-", modifiers: .command)
+                .disabled(feedViewModel == nil)
 
                 Button("Actual Size") {
-                    feedViewModel.resetTextScale()
+                    feedViewModel?.resetTextScale()
                 }
                 .keyboardShortcut("0", modifiers: .command)
+                .disabled(feedViewModel == nil)
             }
-        }
-    }
-
-    private func applyAppearance(_ mode: AppearanceMode) {
-        switch mode {
-        case .light: NSApp.appearance = NSAppearance(named: .aqua)
-        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
-        case .system: NSApp.appearance = nil
         }
     }
 }

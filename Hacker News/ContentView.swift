@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Bindable var viewModel: FeedViewModel
+    @State private var viewModel = FeedViewModel()
     @State private var authManager = HNAuthManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -28,6 +28,21 @@ struct ContentView: View {
                 viewModel.contentType = .all
             }
         }
+        .onAppear {
+            applyAppearance(viewModel.appearanceMode)
+        }
+        .onChange(of: viewModel.appearanceMode) {
+            applyAppearance(viewModel.appearanceMode)
+        }
         .frame(minWidth: 900, minHeight: 600)
+        .focusedSceneValue(\.feedViewModel, viewModel)
+    }
+
+    private func applyAppearance(_ mode: AppearanceMode) {
+        switch mode {
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        case .system: NSApp.appearance = nil
+        }
     }
 }
