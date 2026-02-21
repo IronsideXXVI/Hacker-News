@@ -103,17 +103,19 @@ struct SidebarView: View {
             } else {
                 List(selection: $listSelection) {
                     ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, item in
-                        Group {
-                            if item.type == "comment" {
-                                CommentRowView(comment: item, textScale: viewModel.textScale) { username in
-                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
-                                        viewModel.navigateToProfile(url: url)
+                        RowSelectionReader { isSelected in
+                            Group {
+                                if item.type == "comment" {
+                                    CommentRowView(comment: item, textScale: viewModel.textScale, isSelected: isSelected) { username in
+                                        if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                            viewModel.navigateToProfile(url: url)
+                                        }
                                     }
-                                }
-                            } else {
-                                StoryRowView(story: item, rank: index + 1, textScale: viewModel.textScale) { username in
-                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
-                                        viewModel.navigateToProfile(url: url)
+                                } else {
+                                    StoryRowView(story: item, rank: index + 1, textScale: viewModel.textScale, isSelected: isSelected) { username in
+                                        if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                            viewModel.navigateToProfile(url: url)
+                                        }
                                     }
                                 }
                             }
@@ -146,5 +148,78 @@ struct SidebarView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Row Selection Observer
+
+private struct RowSelectionReader<Content: View>: View {
+    @State private var isSelected = false
+    @ViewBuilder let content: (Bool) -> Content
+
+    var body: some View {
+        content(isSelected)
+            .background(RowSelectionObserver(isSelected: $isSelected))
+    }
+}
+
+private struct RowSelectionObserver: NSViewRepresentable {
+    @Binding var isSelected: Bool
+
+    func makeNSView(context: Context) -> RowSelectionNSView {
+        let view = RowSelectionNSView()
+        view.onSelectionChange = { selected in
+            isSelected = selected
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: RowSelectionNSView, context: Context) {}
+}
+
+private class RowSelectionNSView: NSView {
+    var onSelectionChange: ((Bool) -> Void)?
+    private var observation: NSKeyValueObservation?
+
+    override var intrinsicContentSize: NSSize { .zero }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        attemptObservation()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        attemptObservation()
+    }
+
+    private func attemptObservation() {
+        guard observation == nil, superview != nil else { return }
+
+        if !findAndObserveRowView() {
+            // NSTableRowView may not be in the hierarchy yet; retry next run loop
+            DispatchQueue.main.async { [weak self] in
+                self?.findAndObserveRowView()
+            }
+        }
+    }
+
+    @discardableResult
+    private func findAndObserveRowView() -> Bool {
+        guard observation == nil else { return true }
+
+        var current: NSView? = superview
+        while let view = current {
+            if let rowView = view as? NSTableRowView {
+                observation = rowView.observe(\.isSelected, options: [.new, .initial]) { [weak self] row, _ in
+                    DispatchQueue.main.async {
+                        self?.onSelectionChange?(row.isSelected)
+                    }
+                }
+                return true
+            }
+            current = view.superview
+        }
+        return false
     }
 }

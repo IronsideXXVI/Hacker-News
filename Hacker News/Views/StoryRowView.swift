@@ -4,19 +4,24 @@ struct StoryRowView: View {
     let story: HNItem
     let rank: Int
     var textScale: Double = 1.0
+    var isSelected: Bool = false
     var onUsernameTap: ((String) -> Void)?
+
+    private var adaptiveSecondary: Color {
+        isSelected ? .white.opacity(0.7) : .secondary
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(rank).")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(adaptiveSecondary)
                     .font(.system(size: 10 * textScale))
                     .frame(minWidth: 22 * textScale, alignment: .trailing)
 
                 Text("▲")
                     .font(.system(size: 9 * textScale))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(isSelected ? .white : .orange)
 
                 Text(story.title ?? "Untitled")
                     .font(.system(size: 13 * textScale))
@@ -25,7 +30,7 @@ struct StoryRowView: View {
                 if let domain = story.displayDomain {
                     Text("(\(domain))")
                         .font(.system(size: 10 * textScale))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(adaptiveSecondary)
                 }
             }
 
@@ -46,7 +51,7 @@ struct StoryRowView: View {
                         .onTapGesture {
                             onUsernameTap?(by)
                         }
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(isSelected ? .white : .orange)
                 }
                 Text(story.timeAgo)
                 if let descendants = story.descendants {
@@ -54,9 +59,10 @@ struct StoryRowView: View {
                 }
             }
             .font(.system(size: 10 * textScale))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(adaptiveSecondary)
             .padding(.leading, 30 * textScale)
         }
+        .foregroundStyle(isSelected ? .white : .primary)
         .padding(.vertical, 2)
         .frame(height: 54 * textScale, alignment: .center)
     }
