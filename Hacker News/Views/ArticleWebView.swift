@@ -215,7 +215,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
-        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
+        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.925, alpha: 1)
         webView.pageZoom = CGFloat(textScale)
         webViewProxy?.webView = webView
         context.coordinator.currentURL = url
@@ -226,7 +226,7 @@ struct ArticleWebView: NSViewRepresentable {
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
         webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
-        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : .white
+        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.925, alpha: 1)
         webView.pageZoom = CGFloat(textScale)
         if context.coordinator.currentURL != url {
             webView.evaluateJavaScript(Self.pauseAllMediaJS, completionHandler: nil)
@@ -364,14 +364,29 @@ struct ArticleWebView: NSViewRepresentable {
 
     /* Light mode */
     @media (prefers-color-scheme: light) {
-        td, .commtext, .commtext *, font, span, p { color: #000000 !important; }
+        body {
+            background-color: #ececec !important;
+            color: #1a1a1a !important;
+        }
+
+        body > center > table,
+        #hnmain {
+            background-color: #ececec !important;
+        }
+
+        td, .commtext, .commtext *, font, span, p { color: #1a1a1a !important; }
 
         input[type="text"], input[type="password"], input[type="email"],
         input[type="url"], input[type="number"], input[type="search"],
         textarea, select {
-            background-color: #fff !important;
+            background-color: #ffffff !important;
             color: #1a1a1a !important;
-            border: 1px solid #ccc !important;
+            border: 1px solid #d5d5cf !important;
+        }
+
+        select option {
+            background-color: #ffffff !important;
+            color: #1a1a1a !important;
         }
     }
     """

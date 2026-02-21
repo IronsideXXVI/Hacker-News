@@ -21,7 +21,7 @@ struct StoryCardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: 10)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04))
+                .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.9))
                 .shadow(color: .black.opacity(isHovered ? 0.12 : 0.06), radius: isHovered ? 8 : 4, y: 2)
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -82,7 +82,7 @@ struct StoryCardView: View {
             LinearGradient(
                 colors: colorScheme == .dark
                     ? [Color.orange.opacity(0.15), Color.orange.opacity(0.05)]
-                    : [Color.orange.opacity(0.1), Color.orange.opacity(0.03)],
+                    : [Color.orange.opacity(0.12), Color.orange.opacity(0.05)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

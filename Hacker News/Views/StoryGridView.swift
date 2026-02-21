@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StoryGridView: View {
     @Bindable var viewModel: FeedViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: 280 * viewModel.textScale, maximum: 400 * viewModel.textScale), spacing: 16)]
@@ -43,7 +44,7 @@ struct StoryGridView: View {
                     }
                     .padding(20)
                 }
-                .background(Color(.windowBackgroundColor))
+                .background(colorScheme == .dark ? Color(.windowBackgroundColor) : Color(nsColor: NSColor(white: 0.925, alpha: 1)))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
