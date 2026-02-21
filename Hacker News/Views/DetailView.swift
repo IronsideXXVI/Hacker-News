@@ -70,7 +70,20 @@ struct DetailView: View {
         .onChange(of: viewModel.preferArticleView) { beginNavigation() }
         .onChange(of: viewModel.viewingUserProfileURL) { beginNavigation() }
         .onChange(of: webLoadError) { if webLoadError == nil { showError = false; errorRevealTask?.cancel() } }
-        .onChange(of: isWebViewLoading) { if !isWebViewLoading && minDelayMet { showContent = true } }
+        .onChange(of: isWebViewLoading) {
+            if isWebViewLoading {
+                showContent = false
+                minDelayMet = false
+                minDelayTask?.cancel()
+                minDelayTask = Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    minDelayMet = true
+                }
+            } else if minDelayMet {
+                showContent = true
+            }
+        }
         .onChange(of: minDelayMet) { if minDelayMet && !isWebViewLoading { showContent = true } }
         .onChange(of: viewModel.webRefreshID) {
             webViewID = UUID()
