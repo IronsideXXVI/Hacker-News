@@ -43,13 +43,27 @@ struct ContentView: View {
         if viewModel.showingSettings {
             return "Settings"
         }
-        if viewModel.viewingUserProfileURL != nil {
+        if let profileURL = viewModel.viewingUserProfileURL {
+            if profileURL.absoluteString.contains("/submit") {
+                return "Submit"
+            }
             return "Profile"
         }
         if let story = viewModel.selectedStory {
-            return story.title ?? story.storyTitle ?? "Hacker News"
+            let title = story.title ?? story.storyTitle ?? "Hacker News"
+            let suffix: String
+            if story.type == "comment" || story.displayURL == nil {
+                suffix = ""
+            } else {
+                switch viewModel.viewMode {
+                case .post: suffix = " — Post"
+                case .comments: suffix = " — Comments"
+                case .both: suffix = " — Split Pane"
+                }
+            }
+            return title + suffix
         }
-        return "Hacker News"
+        return "Home Page"
     }
 
     private func applyAppearance(_ mode: AppearanceMode) {
