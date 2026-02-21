@@ -22,7 +22,7 @@ struct StoryCardView: View {
         .background {
             RoundedRectangle(cornerRadius: 10)
                 .fill(colorScheme == .dark ? Color.white.opacity(0.175) : Color.black.opacity(0.065))
-                .shadow(color: .black.opacity(isHovered ? 0.12 : 0.06), radius: isHovered ? 8 : 4, y: 2)
+                .shadow(color: colorScheme == .dark ? .white.opacity(isHovered ? 0.15 : 0.08) : .black.opacity(isHovered ? 0.12 : 0.06), radius: isHovered ? 8 : 4, y: 2)
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay {
