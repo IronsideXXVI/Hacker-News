@@ -29,9 +29,7 @@ struct DetailView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        if viewModel.showingSettings {
-            SettingsView(viewModel: viewModel)
-        } else if let profileURL = viewModel.viewingUserProfileURL {
+        if let profileURL = viewModel.viewingUserProfileURL {
             profileContentView(url: profileURL)
         } else if let story = viewModel.selectedStory {
             storyContentView(for: story)
@@ -177,12 +175,6 @@ struct DetailView: View {
                     Text("Login")
                 }
             }
-        }
-        ToolbarItem(placement: .automatic) {
-            Button { viewModel.navigateToSettings() } label: {
-                Image(systemName: "gearshape")
-            }
-            .help("Settings")
         }
     }
 

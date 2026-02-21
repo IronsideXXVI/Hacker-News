@@ -86,9 +86,7 @@ struct SidebarView: View {
         }
         ToolbarItem(placement: .automatic) {
             Button {
-                viewModel.selectedStory = nil
-                viewModel.viewingUserProfileURL = nil
-                viewModel.showingSettings = false
+                viewModel.navigateHome()
             } label: {
                 Label("Home", systemImage: "house")
             }

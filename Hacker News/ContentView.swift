@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var viewModel = FeedViewModel()
+    @Environment(FeedViewModel.self) private var viewModel
     @State private var authManager = HNAuthManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -40,9 +40,6 @@ struct ContentView: View {
     }
 
     private var tabTitle: String {
-        if viewModel.showingSettings {
-            return "Settings"
-        }
         if let profileURL = viewModel.viewingUserProfileURL {
             if profileURL.absoluteString.contains("/submit") {
                 return "Submit"
