@@ -3,7 +3,6 @@ import SwiftUI
 struct DetailView: View {
     @Bindable var viewModel: FeedViewModel
     var authManager: HNAuthManager
-    @Binding var columnVisibility: NavigationSplitViewVisibility
     @State private var showingLoginSheet = false
     @State private var scrollProgress: Double = 0.0
     @State private var isWebViewLoading = true
@@ -76,69 +75,54 @@ struct DetailView: View {
 
     @ToolbarContentBuilder
     private var detailToolbarContent: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigation) {
-            Button {
-                withAnimation {
-                    columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
-                }
-            } label: {
-                Image(systemName: "sidebar.leading")
-            }
-            .help("Toggle Sidebar")
-            .keyboardShortcut("s", modifiers: [.command, .control])
-            if activeWebViewProxy.canGoBack || activeWebViewProxy.canGoForward || viewModel.canNavigateBack || viewModel.canNavigateForward {
+        if activeWebViewProxy.canGoBack || activeWebViewProxy.canGoForward || viewModel.canNavigateBack || viewModel.canNavigateForward {
+            ToolbarItem(placement: .navigation) {
                 Button {
                     if activeWebViewProxy.canGoBack { activeWebViewProxy.goBack() }
                     else { viewModel.navigateBack() }
                 } label: {
-                    Image(systemName: "chevron.left")
+                    Label("Back", systemImage: "chevron.left")
                 }
                 .help("Back")
                 .disabled(!activeWebViewProxy.canGoBack && !viewModel.canNavigateBack)
+            }
+            ToolbarItem(placement: .navigation) {
                 Button {
                     if activeWebViewProxy.canGoForward { activeWebViewProxy.goForward() }
                     else { viewModel.navigateForward() }
                 } label: {
-                    Image(systemName: "chevron.right")
+                    Label("Forward", systemImage: "chevron.right")
                 }
                 .help("Forward")
                 .disabled(!activeWebViewProxy.canGoForward && !viewModel.canNavigateForward)
             }
-            Button {
-                webViewID = UUID()
-                commentsWebViewID = UUID()
-                Task { await viewModel.loadFeed() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .help("Refresh")
-            Button {
-                viewModel.navigateHome()
-            } label: {
-                Image(systemName: "house")
-            }
-            .help("Home")
-            if let story = viewModel.selectedStory {
+        }
+        if let story = viewModel.selectedStory {
+            ToolbarItem(placement: .automatic) {
                 Button {
                     viewModel.toggleBookmark(story)
                 } label: {
-                    Image(systemName: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
+                    Label("Bookmark", systemImage: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
                 }
                 .help(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Add Bookmark")
             }
-            if let url = currentExternalURL {
+        }
+        if let url = currentExternalURL {
+            ToolbarItem(placement: .automatic) {
                 ShareLink(item: url) {
-                    Image(systemName: "square.and.arrow.up")
+                    Label("Share", systemImage: "square.and.arrow.up")
                 }
                 .help("Share")
             }
-            if currentExternalURL != nil {
+        }
+        if currentExternalURL != nil {
+            ToolbarItem(placement: .automatic) {
                 Button {
                     if let url = currentExternalURL {
                         NSWorkspace.shared.open(url)
                     }
                 } label: {
-                    Image(systemName: "safari")
+                    Label("Open in Browser", systemImage: "safari")
                 }
                 .help("Open in Browser")
             }
@@ -149,9 +133,9 @@ struct DetailView: View {
                     get: { viewModel.viewMode },
                     set: { viewModel.changeViewMode(to: $0) }
                 )) {
-                    Text("Post").tag(ViewMode.post)
-                    Text("Comments").tag(ViewMode.comments)
-                    Image(systemName: "rectangle.split.2x1").tag(ViewMode.both)
+                    Label("Post", systemImage: "richtext.page").tag(ViewMode.post)
+                    Label("Comments", systemImage: "bubble.left.and.text.bubble.right").tag(ViewMode.comments)
+                    Label("Split Pane", systemImage: "rectangle.split.2x1").tag(ViewMode.both)
                 }
                 .pickerStyle(.segmented)
             }
@@ -168,8 +152,8 @@ struct DetailView: View {
                 }
             }
         }
-        ToolbarItemGroup(placement: .automatic) {
-            if authManager.isLoggedIn {
+        if authManager.isLoggedIn {
+            ToolbarItem(placement: .automatic) {
                 Button {
                     if let url = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)") {
                         viewModel.navigateToProfile(url: url)
@@ -177,11 +161,21 @@ struct DetailView: View {
                 } label: {
                     Text("\(authManager.username) (\(authManager.karma))")
                 }
-                Button("Logout") {
+            }
+            ToolbarItem(placement: .automatic) {
+                Button {
                     Task { await authManager.logout() }
+                } label: {
+                    Text("Logout")
                 }
-            } else {
-                Button("Login") { showingLoginSheet = true }
+            }
+        } else {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    showingLoginSheet = true
+                } label: {
+                    Text("Login")
+                }
             }
         }
         ToolbarItem(placement: .automatic) {

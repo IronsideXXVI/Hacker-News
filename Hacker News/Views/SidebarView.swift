@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var viewModel: FeedViewModel
+    @Binding var columnVisibility: NavigationSplitViewVisibility
     @State private var listSelection: HNItem?
 
     var body: some View {
@@ -58,6 +59,40 @@ struct SidebarView: View {
             Divider()
 
             storyListView
+        }
+        .toolbar { sidebarToolbarContent }
+    }
+
+    @ToolbarContentBuilder
+    private var sidebarToolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .automatic) {
+            Button {
+                withAnimation {
+                    columnVisibility = columnVisibility == .detailOnly ? .all : .detailOnly
+                }
+            } label: {
+                Label("Toggle Sidebar", systemImage: "sidebar.leading")
+            }
+            .help("Toggle Sidebar")
+            .keyboardShortcut("s", modifiers: [.command, .control])
+        }
+        ToolbarItem(placement: .automatic) {
+            Button {
+                viewModel.refreshTrigger = UUID()
+            } label: {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .help("Refresh")
+        }
+        ToolbarItem(placement: .automatic) {
+            Button {
+                viewModel.selectedStory = nil
+                viewModel.viewingUserProfileURL = nil
+                viewModel.showingSettings = false
+            } label: {
+                Label("Home", systemImage: "house")
+            }
+            .help("Home")
         }
     }
 

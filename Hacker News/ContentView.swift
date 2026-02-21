@@ -10,12 +10,12 @@ struct ContentView: View {
             columnVisibility: $columnVisibility
         ) {
             Group {
-                SidebarView(viewModel: viewModel)
+                SidebarView(viewModel: viewModel, columnVisibility: $columnVisibility)
                     .toolbar(removing: .sidebarToggle)
             }
             .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 375)
         } detail: {
-            DetailView(viewModel: viewModel, authManager: authManager, columnVisibility: $columnVisibility)
+            DetailView(viewModel: viewModel, authManager: authManager)
         }
         .task {
             await authManager.restoreSession()
