@@ -35,7 +35,21 @@ struct ContentView: View {
             applyAppearance(viewModel.appearanceMode)
         }
         .frame(minWidth: 900, minHeight: 600)
+        .navigationTitle(tabTitle)
         .focusedSceneValue(\.feedViewModel, viewModel)
+    }
+
+    private var tabTitle: String {
+        if viewModel.showingSettings {
+            return "Settings"
+        }
+        if viewModel.viewingUserProfileURL != nil {
+            return "Profile"
+        }
+        if let story = viewModel.selectedStory {
+            return story.title ?? story.storyTitle ?? "Hacker News"
+        }
+        return "Hacker News"
     }
 
     private func applyAppearance(_ mode: AppearanceMode) {
