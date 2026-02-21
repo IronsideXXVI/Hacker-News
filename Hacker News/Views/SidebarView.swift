@@ -65,6 +65,10 @@ struct SidebarView: View {
 
     @ToolbarContentBuilder
     private var sidebarToolbarContent: some ToolbarContent {
+        
+        ToolbarItem(placement: .automatic) {
+            Spacer()
+        }
         ToolbarItem(placement: .automatic) {
             Button {
                 withAnimation {
