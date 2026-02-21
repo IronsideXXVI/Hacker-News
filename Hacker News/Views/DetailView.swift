@@ -37,15 +37,7 @@ struct DetailView: View {
         } else if let story = viewModel.selectedStory {
             storyContentView(for: story)
         } else {
-            VStack(spacing: 8) {
-                Image(systemName: "doc.richtext")
-                    .font(.system(size: 48 * viewModel.textScale))
-                    .foregroundStyle(.tertiary)
-                Text("Select a story")
-                    .font(.system(size: 17 * viewModel.textScale))
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            StoryGridView(viewModel: viewModel)
         }
     }
 
