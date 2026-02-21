@@ -2,11 +2,13 @@ import SwiftUI
 import Sparkle
 
 struct SettingsView: View {
-    @Bindable var viewModel: FeedViewModel
+    @Environment(FeedViewModel.self) private var viewModel
     @EnvironmentObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
     @Environment(\.updater) private var updater
 
     var body: some View {
+        @Bindable var viewModel = viewModel
+
         Form {
             Section {
                 Picker("Appearance", selection: $viewModel.appearanceMode) {

@@ -10,7 +10,6 @@ enum NavigationEntry: Equatable {
     case home
     case story(HNItem, ViewMode)
     case profile(URL)
-    case settings
 }
 
 enum AppearanceMode: String, CaseIterable {
@@ -32,7 +31,6 @@ final class FeedViewModel {
         didSet {
             if selectedStory != nil {
                 viewingUserProfileURL = nil
-                showingSettings = false
             }
         }
     }
@@ -40,15 +38,6 @@ final class FeedViewModel {
         didSet {
             if viewingUserProfileURL != nil {
                 selectedStory = nil
-                showingSettings = false
-            }
-        }
-    }
-    var showingSettings = false {
-        didSet {
-            if showingSettings {
-                selectedStory = nil
-                viewingUserProfileURL = nil
             }
         }
     }
@@ -59,7 +48,6 @@ final class FeedViewModel {
     var canNavigateForward: Bool { !navigationForwardStack.isEmpty }
 
     private var currentNavigationEntry: NavigationEntry {
-        if showingSettings { return .settings }
         if let url = viewingUserProfileURL { return .profile(url) }
         if let story = selectedStory { return .story(story, viewMode) }
         return .home
@@ -79,20 +67,12 @@ final class FeedViewModel {
         viewingUserProfileURL = url
     }
 
-    func navigateToSettings() {
-        guard !showingSettings else { return }
-        navigationBackStack.append(currentNavigationEntry)
-        navigationForwardStack.removeAll()
-        showingSettings = true
-    }
-
     func navigateHome() {
-        guard selectedStory != nil || viewingUserProfileURL != nil || showingSettings else { return }
+        guard selectedStory != nil || viewingUserProfileURL != nil else { return }
         navigationBackStack.append(currentNavigationEntry)
         navigationForwardStack.removeAll()
         selectedStory = nil
         viewingUserProfileURL = nil
-        showingSettings = false
     }
 
     func navigateBack() {
@@ -121,14 +101,11 @@ final class FeedViewModel {
         case .home:
             selectedStory = nil
             viewingUserProfileURL = nil
-            showingSettings = false
         case .story(let item, let mode):
             viewMode = mode
             selectedStory = item
         case .profile(let url):
             viewingUserProfileURL = url
-        case .settings:
-            showingSettings = true
         }
     }
 

@@ -27,6 +27,7 @@ extension FocusedValues {
 struct Hacker_NewsApp: App {
     private let updaterController: SPUStandardUpdaterController
     @StateObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
+    @State private var viewModel = FeedViewModel()
     @FocusedValue(\.feedViewModel) private var feedViewModel
 
     init() {
@@ -50,6 +51,7 @@ struct Hacker_NewsApp: App {
         WindowGroup {
             ContentView()
                 .environment(\.updater, updaterController.updater)
+                .environment(viewModel)
                 .environmentObject(checkForUpdatesViewModel)
                 .onAppear {
                     if updaterController.updater.automaticallyChecksForUpdates {
@@ -58,6 +60,12 @@ struct Hacker_NewsApp: App {
                 }
         }
         .defaultSize(width: 1200, height: 800)
+        Settings {
+            SettingsView()
+                .environment(\.updater, updaterController.updater)
+                .environment(viewModel)
+                .environmentObject(checkForUpdatesViewModel)
+        }
         .commands {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates...") {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var viewModel = FeedViewModel()
+    @Environment(FeedViewModel.self) private var viewModel
     @State private var authManager = HNAuthManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -10,12 +10,12 @@ struct ContentView: View {
             columnVisibility: $columnVisibility
         ) {
             Group {
-                SidebarView(viewModel: viewModel)
+                SidebarView(viewModel: viewModel, columnVisibility: $columnVisibility)
                     .toolbar(removing: .sidebarToggle)
             }
             .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 375)
         } detail: {
-            DetailView(viewModel: viewModel, authManager: authManager, columnVisibility: $columnVisibility)
+            DetailView(viewModel: viewModel, authManager: authManager)
         }
         .task {
             await authManager.restoreSession()
@@ -40,9 +40,6 @@ struct ContentView: View {
     }
 
     private var tabTitle: String {
-        if viewModel.showingSettings {
-            return "Settings"
-        }
         if let profileURL = viewModel.viewingUserProfileURL {
             if profileURL.absoluteString.contains("/submit") {
                 return "Submit"
