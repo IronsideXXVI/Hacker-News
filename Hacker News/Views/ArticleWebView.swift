@@ -214,8 +214,11 @@ struct ArticleWebView: NSViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
-        webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
-        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.925, alpha: 1)
+        let appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)!
+        webView.appearance = appearance
+        appearance.performAsCurrentDrawingAppearance {
+            webView.underPageBackgroundColor = .windowBackgroundColor
+        }
         webView.pageZoom = CGFloat(textScale)
         webViewProxy?.webView = webView
         context.coordinator.currentURL = url
@@ -225,8 +228,13 @@ struct ArticleWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
-        webView.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
-        webView.underPageBackgroundColor = colorScheme == .dark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.925, alpha: 1)
+        let appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)!
+        webView.appearance = appearance
+        appearance.performAsCurrentDrawingAppearance {
+            webView.underPageBackgroundColor = .windowBackgroundColor
+        }
+        let scheme = colorScheme == .dark ? "dark" : "light"
+        webView.evaluateJavaScript("document.documentElement.style.colorScheme = '\(scheme)'", completionHandler: nil)
         webView.pageZoom = CGFloat(textScale)
         if context.coordinator.currentURL != url {
             webView.evaluateJavaScript(Self.pauseAllMediaJS, completionHandler: nil)
@@ -334,13 +342,13 @@ struct ArticleWebView: NSViewRepresentable {
     /* Dark mode */
     @media (prefers-color-scheme: dark) {
         body {
-            background-color: #1e1e1e !important;
+            background-color: transparent !important;
             color: #ffffff !important;
         }
 
         body > center > table,
         #hnmain {
-            background-color: #1e1e1e !important;
+            background-color: transparent !important;
         }
 
         td, .commtext, .commtext * , font, span, p { color: #ffffff !important; }
@@ -365,13 +373,13 @@ struct ArticleWebView: NSViewRepresentable {
     /* Light mode */
     @media (prefers-color-scheme: light) {
         body {
-            background-color: #ececec !important;
+            background-color: transparent !important;
             color: #1a1a1a !important;
         }
 
         body > center > table,
         #hnmain {
-            background-color: #ececec !important;
+            background-color: transparent !important;
         }
 
         td, .commtext, .commtext *, font, span, p { color: #1a1a1a !important; }
