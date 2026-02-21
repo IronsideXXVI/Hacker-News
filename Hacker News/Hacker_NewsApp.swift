@@ -106,19 +106,19 @@ struct Hacker_NewsApp: App {
                 Divider()
 
                 Button("Show Post") {
-                    feedViewModel?.viewMode = .post
+                    feedViewModel?.changeViewMode(to: .post)
                 }
                 .keyboardShortcut("1", modifiers: .command)
                 .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
 
                 Button("Show Comments") {
-                    feedViewModel?.viewMode = .comments
+                    feedViewModel?.changeViewMode(to: .comments)
                 }
                 .keyboardShortcut("2", modifiers: .command)
                 .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
 
                 Button("Show Both") {
-                    feedViewModel?.viewMode = .both
+                    feedViewModel?.changeViewMode(to: .both)
                 }
                 .keyboardShortcut("3", modifiers: .command)
                 .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")

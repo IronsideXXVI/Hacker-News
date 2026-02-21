@@ -106,11 +106,15 @@ struct SidebarView: View {
                         Group {
                             if item.type == "comment" {
                                 CommentRowView(comment: item, textScale: viewModel.textScale) { username in
-                                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
+                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                        viewModel.navigateToProfile(url: url)
+                                    }
                                 }
                             } else {
                                 StoryRowView(story: item, rank: index + 1, textScale: viewModel.textScale) { username in
-                                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(username)")
+                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                        viewModel.navigateToProfile(url: url)
+                                    }
                                 }
                             }
                         }
@@ -131,11 +135,13 @@ struct SidebarView: View {
                 }
                 .listStyle(.sidebar)
                 .onChange(of: listSelection) { _, newValue in
-                    viewModel.selectedStory = newValue
+                    if let story = newValue {
+                        viewModel.navigate(to: story)
+                    }
                 }
                 .onChange(of: viewModel.selectedStory) { _, newValue in
-                    if newValue == nil {
-                        listSelection = nil
+                    if listSelection != newValue {
+                        listSelection = newValue
                     }
                 }
             }

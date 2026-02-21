@@ -6,6 +6,13 @@ enum ViewMode: String, CaseIterable {
     case post, comments, both
 }
 
+enum NavigationEntry: Equatable {
+    case home
+    case story(HNItem, ViewMode)
+    case profile(URL)
+    case settings
+}
+
 enum AppearanceMode: String, CaseIterable {
     case light, dark, system
 
@@ -45,6 +52,86 @@ final class FeedViewModel {
             }
         }
     }
+    // MARK: - Navigation History
+    private(set) var navigationBackStack: [NavigationEntry] = []
+    private(set) var navigationForwardStack: [NavigationEntry] = []
+    var canNavigateBack: Bool { !navigationBackStack.isEmpty }
+    var canNavigateForward: Bool { !navigationForwardStack.isEmpty }
+
+    private var currentNavigationEntry: NavigationEntry {
+        if showingSettings { return .settings }
+        if let url = viewingUserProfileURL { return .profile(url) }
+        if let story = selectedStory { return .story(story, viewMode) }
+        return .home
+    }
+
+    func navigate(to story: HNItem) {
+        guard selectedStory != story else { return }
+        navigationBackStack.append(currentNavigationEntry)
+        navigationForwardStack.removeAll()
+        selectedStory = story
+    }
+
+    func navigateToProfile(url: URL) {
+        guard viewingUserProfileURL != url else { return }
+        navigationBackStack.append(currentNavigationEntry)
+        navigationForwardStack.removeAll()
+        viewingUserProfileURL = url
+    }
+
+    func navigateToSettings() {
+        guard !showingSettings else { return }
+        navigationBackStack.append(currentNavigationEntry)
+        navigationForwardStack.removeAll()
+        showingSettings = true
+    }
+
+    func navigateHome() {
+        guard selectedStory != nil || viewingUserProfileURL != nil || showingSettings else { return }
+        navigationBackStack.append(currentNavigationEntry)
+        navigationForwardStack.removeAll()
+        selectedStory = nil
+        viewingUserProfileURL = nil
+        showingSettings = false
+    }
+
+    func navigateBack() {
+        guard let entry = navigationBackStack.popLast() else { return }
+        navigationForwardStack.append(currentNavigationEntry)
+        restore(entry)
+    }
+
+    func navigateForward() {
+        guard let entry = navigationForwardStack.popLast() else { return }
+        navigationBackStack.append(currentNavigationEntry)
+        restore(entry)
+    }
+
+    func changeViewMode(to newMode: ViewMode) {
+        guard viewMode != newMode else { return }
+        if selectedStory != nil {
+            navigationBackStack.append(currentNavigationEntry)
+            navigationForwardStack.removeAll()
+        }
+        viewMode = newMode
+    }
+
+    private func restore(_ entry: NavigationEntry) {
+        switch entry {
+        case .home:
+            selectedStory = nil
+            viewingUserProfileURL = nil
+            showingSettings = false
+        case .story(let item, let mode):
+            viewMode = mode
+            selectedStory = item
+        case .profile(let url):
+            viewingUserProfileURL = url
+        case .settings:
+            showingSettings = true
+        }
+    }
+
     var webRefreshID = UUID()
     var showFindBar = false
     var findQuery = ""

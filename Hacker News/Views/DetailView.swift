@@ -60,8 +60,14 @@ struct DetailView: View {
             .onChange(of: viewModel.showFindBar) { if !viewModel.showFindBar { viewModel.findQuery = ""; webViewProxy.clearSelection() } }
             .onChange(of: viewModel.findNextTrigger) { webViewProxy.findNext(viewModel.findQuery) }
             .onChange(of: viewModel.findPreviousTrigger) { webViewProxy.findPrevious(viewModel.findQuery) }
-            .onChange(of: viewModel.goBackTrigger) { webViewProxy.goBack() }
-            .onChange(of: viewModel.goForwardTrigger) { webViewProxy.goForward() }
+            .onChange(of: viewModel.goBackTrigger) {
+                if webViewProxy.canGoBack { webViewProxy.goBack() }
+                else { viewModel.navigateBack() }
+            }
+            .onChange(of: viewModel.goForwardTrigger) {
+                if webViewProxy.canGoForward { webViewProxy.goForward() }
+                else { viewModel.navigateForward() }
+            }
             .onChange(of: viewModel.refreshTrigger) { webViewID = UUID(); commentsWebViewID = UUID(); Task { await viewModel.loadFeed() } }
             .toolbar { detailToolbarContent }
             .sheet(isPresented: $showingLoginSheet) {
@@ -81,21 +87,23 @@ struct DetailView: View {
             }
             .help("Toggle Sidebar")
             .keyboardShortcut("s", modifiers: [.command, .control])
-            if webViewProxy.canGoBack || webViewProxy.canGoForward {
+            if webViewProxy.canGoBack || webViewProxy.canGoForward || viewModel.canNavigateBack || viewModel.canNavigateForward {
                 Button {
-                    webViewProxy.goBack()
+                    if webViewProxy.canGoBack { webViewProxy.goBack() }
+                    else { viewModel.navigateBack() }
                 } label: {
                     Image(systemName: "chevron.left")
                 }
                 .help("Back")
-                .disabled(!webViewProxy.canGoBack)
+                .disabled(!webViewProxy.canGoBack && !viewModel.canNavigateBack)
                 Button {
-                    webViewProxy.goForward()
+                    if webViewProxy.canGoForward { webViewProxy.goForward() }
+                    else { viewModel.navigateForward() }
                 } label: {
                     Image(systemName: "chevron.right")
                 }
                 .help("Forward")
-                .disabled(!webViewProxy.canGoForward)
+                .disabled(!webViewProxy.canGoForward && !viewModel.canNavigateForward)
             }
             Button {
                 webViewID = UUID()
@@ -106,9 +114,7 @@ struct DetailView: View {
             }
             .help("Refresh")
             Button {
-                viewModel.selectedStory = nil
-                viewModel.viewingUserProfileURL = nil
-                viewModel.showingSettings = false
+                viewModel.navigateHome()
             } label: {
                 Image(systemName: "house")
             }
@@ -140,7 +146,10 @@ struct DetailView: View {
         }
         ToolbarItem(placement: .navigation) {
             if viewModel.selectedStory != nil && viewModel.viewingUserProfileURL == nil && viewModel.selectedStory?.type != "comment" && viewModel.selectedStory?.displayURL != nil {
-                Picker("View", selection: $viewModel.viewMode) {
+                Picker("View", selection: Binding(
+                    get: { viewModel.viewMode },
+                    set: { viewModel.changeViewMode(to: $0) }
+                )) {
                     Text("Post").tag(ViewMode.post)
                     Text("Comments").tag(ViewMode.comments)
                     Image(systemName: "rectangle.split.2x1").tag(ViewMode.both)
@@ -151,7 +160,9 @@ struct DetailView: View {
         ToolbarItem(placement: .automatic) {
             if authManager.isLoggedIn {
                 Button {
-                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/submit")
+                    if let url = URL(string: "https://news.ycombinator.com/submit") {
+                        viewModel.navigateToProfile(url: url)
+                    }
                 } label: {
                     Text("Submit")
                         .foregroundStyle(.primary)
@@ -161,7 +172,9 @@ struct DetailView: View {
         ToolbarItemGroup(placement: .automatic) {
             if authManager.isLoggedIn {
                 Button {
-                    viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)")
+                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(authManager.username)") {
+                        viewModel.navigateToProfile(url: url)
+                    }
                 } label: {
                     Text("\(authManager.username) (\(authManager.karma))")
                 }
@@ -173,7 +186,7 @@ struct DetailView: View {
             }
         }
         ToolbarItem(placement: .automatic) {
-            Button { viewModel.showingSettings = true } label: {
+            Button { viewModel.navigateToSettings() } label: {
                 Image(systemName: "gearshape")
             }
             .help("Settings")
@@ -342,7 +355,9 @@ struct DetailView: View {
                                 }
                             }
                             .onTapGesture {
-                                viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(by)")
+                                if let url = URL(string: "https://news.ycombinator.com/user?id=\(by)") {
+                                    viewModel.navigateToProfile(url: url)
+                                }
                             }
                     }
                     if let storyTitle = story.storyTitle {
@@ -387,7 +402,9 @@ struct DetailView: View {
                                 }
                             }
                             .onTapGesture {
-                                viewModel.viewingUserProfileURL = URL(string: "https://news.ycombinator.com/user?id=\(by)")
+                                if let url = URL(string: "https://news.ycombinator.com/user?id=\(by)") {
+                                    viewModel.navigateToProfile(url: url)
+                                }
                             }
                     }
                     Text(story.timeAgo)

@@ -34,7 +34,7 @@ struct StoryGridView: View {
                         ForEach(viewModel.stories) { story in
                             StoryCardView(story: story, textScale: viewModel.textScale)
                                 .onTapGesture {
-                                    viewModel.selectedStory = story
+                                    viewModel.navigate(to: story)
                                 }
                                 .onAppear {
                                     Task { await viewModel.loadMoreIfNeeded(currentItem: story) }
