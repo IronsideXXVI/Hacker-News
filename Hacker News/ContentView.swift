@@ -63,7 +63,7 @@ struct ContentView: View {
             }
             return title + suffix
         }
-        return "Home Page"
+        return "Homepage"
     }
 
     private func applyAppearance(_ mode: AppearanceMode) {
