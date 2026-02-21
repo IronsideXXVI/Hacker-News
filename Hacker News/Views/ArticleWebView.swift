@@ -273,17 +273,9 @@ struct ArticleWebView: NSViewRepresentable {
     #hnmain > tbody > tr:nth-child(2) { display: none !important; }
     """
 
-    /// HN paths that should receive form/profile styling
-    private static let formStyledPaths: Set<String> = [
-        "/item", "/user", "/submit", "/reply", "/edit", "/comment"
-    ]
-
     private static var earlyFormStylingJS: String {
-        let pathChecks = formStyledPaths
-            .map { "location.pathname === '\($0)'" }
-            .joined(separator: " || ")
         return """
-        if (location.hostname.indexOf('ycombinator.com') !== -1 && (\(pathChecks))) {
+        if (location.hostname.indexOf('ycombinator.com') !== -1) {
             \(cssInjectionJS(css: formStylingCSS))
         }
         """
@@ -457,11 +449,8 @@ struct ArticleWebView: NSViewRepresentable {
             let toolbarJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.toolbarHideCSS)
             webView.evaluateJavaScript(toolbarJS, completionHandler: nil)
 
-            let path = webView.url?.path ?? ""
-            if ArticleWebView.formStyledPaths.contains(path) {
-                let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
-                webView.evaluateJavaScript(formJS, completionHandler: nil)
-            }
+            let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
+            webView.evaluateJavaScript(formJS, completionHandler: nil)
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
