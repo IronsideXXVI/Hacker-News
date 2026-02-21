@@ -86,6 +86,20 @@ struct Hacker_NewsApp: App {
 
                 Divider()
 
+                Button("Show Post") {
+                    feedViewModel.preferArticleView = true
+                }
+                .keyboardShortcut("1", modifiers: .command)
+                .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
+
+                Button("Show Comments") {
+                    feedViewModel.preferArticleView = false
+                }
+                .keyboardShortcut("2", modifiers: .command)
+                .disabled(feedViewModel.selectedStory == nil || feedViewModel.selectedStory?.displayURL == nil || feedViewModel.selectedStory?.type == "comment")
+
+                Divider()
+
                 Button("Zoom In") {
                     feedViewModel.increaseTextScale()
                 }
