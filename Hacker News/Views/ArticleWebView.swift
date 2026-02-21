@@ -187,6 +187,13 @@ struct ArticleWebView: NSViewRepresentable {
         )
         config.userContentController.addUserScript(colorSchemeScript)
 
+        let formStylingScript = WKUserScript(
+            source: Self.earlyFormStylingJS,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(formStylingScript)
+
         let scrollScript = WKUserScript(
             source: Self.scrollObserverJS,
             injectionTime: .atDocumentEnd,
@@ -265,6 +272,22 @@ struct ArticleWebView: NSViewRepresentable {
     #hnmain > tbody > tr:first-child { display: none !important; }
     #hnmain > tbody > tr:nth-child(2) { display: none !important; }
     """
+
+    /// HN paths that should receive form/profile styling
+    private static let formStyledPaths: Set<String> = [
+        "/item", "/user", "/submit", "/reply", "/edit", "/comment"
+    ]
+
+    private static var earlyFormStylingJS: String {
+        let pathChecks = formStyledPaths
+            .map { "location.pathname === '\($0)'" }
+            .joined(separator: " || ")
+        return """
+        if (location.hostname.indexOf('ycombinator.com') !== -1 && (\(pathChecks))) {
+            \(cssInjectionJS(css: formStylingCSS))
+        }
+        """
+    }
 
     // MARK: - Profile / Form Styling CSS
 
@@ -420,12 +443,6 @@ struct ArticleWebView: NSViewRepresentable {
             }
         }
 
-        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-            DispatchQueue.main.async {
-                self.parent.isLoading = false
-            }
-        }
-
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             DispatchQueue.main.async {
                 self.parent.loadError = nil
@@ -441,7 +458,7 @@ struct ArticleWebView: NSViewRepresentable {
             webView.evaluateJavaScript(toolbarJS, completionHandler: nil)
 
             let path = webView.url?.path ?? ""
-            if path == "/item" || path == "/user" || path == "/submit" || path.hasPrefix("/submit") {
+            if ArticleWebView.formStyledPaths.contains(path) {
                 let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
                 webView.evaluateJavaScript(formJS, completionHandler: nil)
             }
