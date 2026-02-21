@@ -21,7 +21,7 @@ struct StoryCardView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: 10)
-                .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.9))
+                .fill(colorScheme == .dark ? Color.white.opacity(0.175) : Color.black.opacity(0.065))
                 .shadow(color: .black.opacity(isHovered ? 0.12 : 0.06), radius: isHovered ? 8 : 4, y: 2)
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
