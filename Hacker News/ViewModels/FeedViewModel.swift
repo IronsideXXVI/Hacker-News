@@ -132,7 +132,9 @@ final class FeedViewModel {
         }
     }
 
-    var isReaderModeActive = false
+    var isReaderModeActive: Bool = false {
+        didSet { UserDefaults.standard.set(isReaderModeActive, forKey: "isReaderModeActive") }
+    }
     var isReaderModeAvailable = false
     var readerModeTrigger = UUID()
 
@@ -238,6 +240,7 @@ final class FeedViewModel {
         self.textScale = UserDefaults.standard.object(forKey: "textScale") as? Double ?? 1.0
         self.appearanceMode = (UserDefaults.standard.string(forKey: "appearanceMode")).flatMap(AppearanceMode.init(rawValue:)) ?? .system
         self.commentSort = (UserDefaults.standard.string(forKey: "commentSort")).flatMap(HNCommentSort.init(rawValue:)) ?? .default
+        self.isReaderModeActive = UserDefaults.standard.object(forKey: "isReaderModeActive") as? Bool ?? false
         if let data = UserDefaults.standard.data(forKey: bookmarksKey),
            let items = try? JSONDecoder().decode([HNItem].self, from: data) {
             self.bookmarkedItems = items
