@@ -68,6 +68,15 @@ struct DetailView: View {
                 else { viewModel.navigateForward() }
             }
             .onChange(of: viewModel.refreshTrigger) { webViewID = UUID(); commentsWebViewID = UUID(); Task { await viewModel.loadFeed() } }
+            .onChange(of: viewModel.readerModeTrigger) {
+                if viewModel.selectedStory != nil,
+                   viewModel.selectedStory?.displayURL != nil,
+                   viewModel.viewMode != .comments,
+                   viewModel.viewingUserProfileURL == nil,
+                   viewModel.isReaderModeAvailable || viewModel.isReaderModeActive {
+                    toggleReaderMode()
+                }
+            }
             .toolbar { detailToolbarContent }
             .sheet(isPresented: $showingLoginSheet) {
                 LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
@@ -118,6 +127,18 @@ struct DetailView: View {
                 Image(systemName: "house")
             }
             .help("Home")
+            if viewModel.selectedStory != nil,
+               viewModel.selectedStory?.displayURL != nil,
+               viewModel.viewMode != .comments,
+               viewModel.viewingUserProfileURL == nil {
+                Button {
+                    toggleReaderMode()
+                } label: {
+                    Image(systemName: viewModel.isReaderModeActive ? "doc.plaintext.fill" : "doc.plaintext")
+                }
+                .help(viewModel.isReaderModeActive ? "Exit Reader Mode" : "Reader Mode")
+                .disabled(!viewModel.isReaderModeAvailable && !viewModel.isReaderModeActive)
+            }
             if let story = viewModel.selectedStory {
                 Button {
                     viewModel.toggleBookmark(story)
@@ -528,6 +549,21 @@ struct DetailView: View {
         }
     }
 
+    private func toggleReaderMode() {
+        if viewModel.isReaderModeActive {
+            viewModel.isReaderModeActive = false
+            if let articleURL = viewModel.selectedStory?.displayURL {
+                webViewProxy.deactivateReaderMode(url: articleURL)
+            }
+        } else {
+            viewModel.isReaderModeActive = true
+            webViewProxy.prepareForReaderMode()
+            Task {
+                await webViewProxy.activateReaderMode(pageZoom: CGFloat(viewModel.textScale))
+            }
+        }
+    }
+
     private func handleCommentSortChanged(_ mode: String) {
         if let sort = HNCommentSort(rawValue: mode) {
             viewModel.commentSort = sort
@@ -571,6 +607,19 @@ struct DetailView: View {
                     popUpBlockingEnabled: viewModel.popUpBlockingEnabled,
                     textScale: viewModel.textScale,
                     webViewProxy: webViewProxy,
+                    onReadabilityChecked: { isReaderable in
+                        viewModel.isReaderModeAvailable = isReaderable
+                        if viewModel.isReaderModeActive && isReaderable {
+                            // Keep loading overlay visible while reader mode activates
+                            webViewProxy.prepareForReaderMode()
+                            Task {
+                                await webViewProxy.activateReaderMode(pageZoom: CGFloat(viewModel.textScale))
+                            }
+                        } else {
+                            // No reader mode activation — reveal content now
+                            isWebViewLoading = false
+                        }
+                    },
                     scrollProgress: $scrollProgress,
                     isLoading: $isWebViewLoading,
                     loadError: $webLoadError

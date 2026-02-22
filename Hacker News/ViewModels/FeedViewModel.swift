@@ -132,6 +132,10 @@ final class FeedViewModel {
         }
     }
 
+    var isReaderModeActive = false
+    var isReaderModeAvailable = false
+    var readerModeTrigger = UUID()
+
     var webRefreshID = UUID()
     var showFindBar = false
     var findQuery = ""

@@ -107,6 +107,217 @@ class WebViewProxy {
         currentMatch = 0
     }
 
+    // MARK: - Reader Mode
+
+    private static let readabilityJS: String? = {
+        guard let url = Bundle.main.url(forResource: "Readability", withExtension: "js"),
+              let source = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return source
+    }()
+
+    private static let readerableJS: String? = {
+        guard let url = Bundle.main.url(forResource: "Readability-readerable", withExtension: "js"),
+              let source = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        return source
+    }()
+
+    func checkReadability() async -> Bool {
+        guard let webView,
+              let readerableJS = Self.readerableJS else { return false }
+        let js = """
+        (function() {
+            \(readerableJS)
+            return isProbablyReaderable(document);
+        })()
+        """
+        do {
+            let result = try await webView.evaluateJavaScript(js)
+            return (result as? Bool) ?? false
+        } catch {
+            return false
+        }
+    }
+
+    func activateReaderMode(pageZoom: CGFloat) async {
+        guard let webView,
+              let readabilityJS = Self.readabilityJS else { return }
+        let js = """
+        (function() {
+            \(readabilityJS)
+            var article = new Readability(document.cloneNode(true)).parse();
+            if (!article) return null;
+            return JSON.stringify({
+                title: article.title || '',
+                byline: article.byline || '',
+                siteName: article.siteName || '',
+                content: article.content || ''
+            });
+        })()
+        """
+        do {
+            guard let jsonString = try await webView.evaluateJavaScript(js) as? String,
+                  let data = jsonString.data(using: .utf8),
+                  let article = try? JSONSerialization.jsonObject(with: data) as? [String: String] else { return }
+            let title = article["title"] ?? ""
+            let byline = article["byline"] ?? ""
+            let siteName = article["siteName"] ?? ""
+            let content = article["content"] ?? ""
+            let html = Self.buildReaderHTML(title: title, byline: byline, siteName: siteName, content: content, pageZoom: pageZoom)
+            webView.loadHTMLString(html, baseURL: webView.url)
+        } catch {
+            return
+        }
+    }
+
+    func prepareForReaderMode() {
+        if let coordinator = webView?.navigationDelegate as? ArticleWebView.Coordinator {
+            coordinator.isActivatingReaderMode = true
+        }
+    }
+
+    func deactivateReaderMode(url: URL) {
+        webView?.load(URLRequest(url: url))
+    }
+
+    private static func buildReaderHTML(title: String, byline: String, siteName: String, content: String, pageZoom: CGFloat) -> String {
+        let escapedTitle = title.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+        let escapedByline = byline.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+        let escapedSiteName = siteName.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+        let fontSize = 18.0 * Double(pageZoom)
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="color-scheme" content="light dark">
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                font-family: 'New York', 'Georgia', 'Times New Roman', serif;
+                font-size: \(fontSize)px;
+                line-height: 1.7;
+                max-width: 680px;
+                margin: 0 auto;
+                padding: 40px 20px 80px;
+                color: #1a1a1a;
+                background: #ffffff;
+                -webkit-font-smoothing: antialiased;
+            }
+            @media (prefers-color-scheme: dark) {
+                body { color: #e0e0e0; background: #1a1a1a; }
+                a { color: #ff8533; }
+                a:visited { color: #cc6b29; }
+                img { opacity: 0.9; }
+                blockquote { border-left-color: #444; }
+                hr { border-color: #333; }
+                code, pre { background: #2a2a2a; }
+                table, th, td { border-color: #444; }
+            }
+            .reader-header { margin-bottom: 32px; }
+            .reader-title {
+                font-size: 1.8em;
+                line-height: 1.25;
+                font-weight: 700;
+                margin: 0 0 12px 0;
+            }
+            .reader-meta {
+                font-size: 0.8em;
+                color: #666;
+                font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            }
+            @media (prefers-color-scheme: dark) {
+                .reader-meta { color: #999; }
+            }
+            .reader-content img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 4px;
+            }
+            .reader-content a { color: #ff6600; }
+            .reader-content a:visited { color: #cc5200; }
+            @media (prefers-color-scheme: dark) {
+                .reader-content a { color: #ff8533; }
+                .reader-content a:visited { color: #cc6b29; }
+            }
+            .reader-content p { margin: 0 0 1em 0; }
+            .reader-content h1, .reader-content h2, .reader-content h3,
+            .reader-content h4, .reader-content h5, .reader-content h6 {
+                line-height: 1.3;
+                margin-top: 1.5em;
+                margin-bottom: 0.5em;
+            }
+            .reader-content blockquote {
+                margin: 1em 0;
+                padding: 0 0 0 1em;
+                border-left: 3px solid #ddd;
+                color: #555;
+            }
+            @media (prefers-color-scheme: dark) {
+                .reader-content blockquote { color: #aaa; }
+            }
+            .reader-content pre {
+                overflow-x: auto;
+                padding: 12px;
+                background: #f5f5f5;
+                border-radius: 6px;
+                font-size: 0.85em;
+                line-height: 1.5;
+            }
+            .reader-content code {
+                font-size: 0.9em;
+                background: #f5f5f5;
+                padding: 2px 4px;
+                border-radius: 3px;
+            }
+            .reader-content pre code {
+                background: none;
+                padding: 0;
+            }
+            .reader-content table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1em 0;
+            }
+            .reader-content th, .reader-content td {
+                border: 1px solid #ddd;
+                padding: 8px 12px;
+                text-align: left;
+            }
+            .reader-content figure {
+                margin: 1.5em 0;
+            }
+            .reader-content figcaption {
+                font-size: 0.85em;
+                color: #666;
+                margin-top: 8px;
+            }
+            @media (prefers-color-scheme: dark) {
+                .reader-content figcaption { color: #999; }
+            }
+        </style>
+        </head>
+        <body>
+        <div class="reader-header">
+            <h1 class="reader-title">\(escapedTitle)</h1>
+            <div class="reader-meta">
+                \(!escapedByline.isEmpty ? escapedByline : "")\(!escapedByline.isEmpty && !escapedSiteName.isEmpty ? " · " : "")\(!escapedSiteName.isEmpty ? escapedSiteName : "")
+            </div>
+        </div>
+        <div class="reader-content">
+            \(content)
+        </div>
+        </body>
+        </html>
+        """
+    }
+
     var commentSort: HNCommentSort = .default
 
     func injectCommentSortUI() {
@@ -472,6 +683,7 @@ struct ArticleWebView: NSViewRepresentable {
     let textScale: Double
     var webViewProxy: WebViewProxy?
     var onCommentSortChanged: ((String) -> Void)?
+    var onReadabilityChecked: ((Bool) -> Void)?
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -479,13 +691,14 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
         self.textScale = textScale
         self.webViewProxy = webViewProxy
         self.onCommentSortChanged = onCommentSortChanged
+        self.onReadabilityChecked = onReadabilityChecked
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -800,6 +1013,7 @@ struct ArticleWebView: NSViewRepresentable {
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         var parent: ArticleWebView
         var currentURL: URL?
+        var isActivatingReaderMode = false
 
         init(parent: ArticleWebView) {
             self.parent = parent
@@ -821,6 +1035,9 @@ struct ArticleWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            if isActivatingReaderMode {
+                return
+            }
             DispatchQueue.main.async {
                 self.parent.isLoading = true
                 self.parent.loadError = nil
@@ -828,13 +1045,40 @@ struct ArticleWebView: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if isActivatingReaderMode {
+                isActivatingReaderMode = false
+                DispatchQueue.main.async {
+                    self.parent.isLoading = false
+                }
+                webView.evaluateJavaScript(ArticleWebView.scrollObserverJS, completionHandler: nil)
+                return
+            }
+
             DispatchQueue.main.async {
                 self.parent.loadError = nil
-                self.parent.isLoading = false
             }
             webView.evaluateJavaScript(ArticleWebView.scrollObserverJS, completionHandler: nil)
 
-            guard let host = webView.url?.host, host.contains("ycombinator.com") else { return }
+            guard let host = webView.url?.host, host.contains("ycombinator.com") else {
+                // For non-HN pages with a readability callback, defer isLoading = false
+                // to the callback so the loading overlay stays up until reader mode
+                // HTML is ready (if reader mode is active).
+                if let proxy = parent.webViewProxy, let callback = parent.onReadabilityChecked {
+                    Task { @MainActor in
+                        let isReaderable = await proxy.checkReadability()
+                        callback(isReaderable)
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self.parent.isLoading = false
+                    }
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+            }
 
             // Toolbar CSS is handled by the early WKUserScript, but re-inject
             // in case of client-side navigation where user scripts don't re-run

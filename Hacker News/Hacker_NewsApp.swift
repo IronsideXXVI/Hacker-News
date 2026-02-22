@@ -123,6 +123,12 @@ struct Hacker_NewsApp: App {
                 .keyboardShortcut("3", modifiers: .command)
                 .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
 
+                Button("Toggle Reader Mode") {
+                    feedViewModel?.readerModeTrigger = UUID()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(feedViewModel == nil || feedViewModel?.selectedStory == nil || feedViewModel?.selectedStory?.displayURL == nil || feedViewModel?.selectedStory?.type == "comment")
+
                 Divider()
 
                 Button("Zoom In") {
