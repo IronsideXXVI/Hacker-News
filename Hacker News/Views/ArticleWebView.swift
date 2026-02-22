@@ -185,6 +185,14 @@ class WebViewProxy {
 
             table.parentNode.insertBefore(sortBar, table);
 
+            var addBtn = document.querySelector('input[value="add comment"]');
+            if (addBtn) {
+                var btnLeft = addBtn.getBoundingClientRect().left;
+                var barLeft = sortBar.getBoundingClientRect().left;
+                var offset = btnLeft - barLeft;
+                if (offset > 0) sortBar.style.paddingLeft = offset + 'px';
+            }
+
             function doSort(mode) {
                 var parent = table.querySelector('tbody') || table;
                 if (mode === 'default') {
