@@ -154,6 +154,22 @@ class WebViewProxy {
                         tr.athing.comtr > td > table > tbody > tr > td.default { background: rgb(51, 51, 51); } \\
                         .fatitem { background: rgb(51, 51, 51); } \\
                     } \\
+                    .hn-inline-reply { margin: 8px 0 4px 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } \\
+                    .hn-inline-reply textarea { width: 100%; min-height: 80px; max-height: 300px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 13px; border: 1px solid #d5d5cf; border-radius: 6px; padding: 8px 10px; box-sizing: border-box; outline: none; transition: border-color 0.2s, box-shadow 0.2s; resize: vertical; background: #fff; color: #1a1a1a; } \\
+                    .hn-inline-reply textarea:focus { border-color: #ff6600; box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.25); } \\
+                    .hn-reply-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; } \\
+                    .hn-reply-submit { background: #ff6600; border: none; border-radius: 6px; padding: 5px 14px; color: white; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: background-color 0.15s; } \\
+                    .hn-reply-submit:hover { background: #e55c00; } \\
+                    .hn-reply-submit:disabled { background: #ccc; cursor: default; } \\
+                    .hn-reply-cancel { background: none; border: 1px solid #d5d5cf; border-radius: 6px; padding: 4px 12px; color: #666; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 12px; cursor: pointer; transition: all 0.15s; } \\
+                    .hn-reply-cancel:hover { border-color: #ff6600; color: #ff6600; } \\
+                    .hn-reply-status { font-size: 12px; color: #828282; } \\
+                    @media (prefers-color-scheme: dark) { \\
+                        .hn-inline-reply textarea { background: #2a2a2a; color: #e0e0e0; border-color: #444; } \\
+                        .hn-reply-cancel { border-color: #444; color: #999; } \\
+                        .hn-reply-cancel:hover { border-color: #ff8533; color: #ff8533; } \\
+                        .hn-reply-submit:disabled { background: #555; } \\
+                    } \\
                 ';
                 document.head.appendChild(style);
             }
@@ -240,6 +256,106 @@ class WebViewProxy {
                 if (defTd && indent > 0) {
                     defTd.style.borderLeftColor = nestColors[(indent - 1) % nestColors.length];
                 }
+            });
+
+            // Inline reply handling
+            table.querySelectorAll('a[href^="reply"]').forEach(function(replyLink) {
+                replyLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var commentRow = replyLink.closest('tr.athing.comtr');
+                    if (!commentRow) return;
+
+                    var existing = commentRow.querySelector('.hn-inline-reply');
+                    if (existing) { existing.remove(); return; }
+
+                    document.querySelectorAll('.hn-inline-reply').forEach(function(f) { f.remove(); });
+
+                    var container = document.createElement('div');
+                    container.className = 'hn-inline-reply';
+
+                    var ta = document.createElement('textarea');
+                    ta.placeholder = 'Write your reply...';
+                    container.appendChild(ta);
+
+                    var actions = document.createElement('div');
+                    actions.className = 'hn-reply-actions';
+
+                    var submitBtn = document.createElement('button');
+                    submitBtn.className = 'hn-reply-submit';
+                    submitBtn.textContent = 'Reply';
+
+                    var cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'hn-reply-cancel';
+                    cancelBtn.textContent = 'Cancel';
+
+                    var statusEl = document.createElement('span');
+                    statusEl.className = 'hn-reply-status';
+
+                    actions.appendChild(submitBtn);
+                    actions.appendChild(cancelBtn);
+                    actions.appendChild(statusEl);
+                    container.appendChild(actions);
+
+                    var defTd2 = commentRow.querySelector('td.default');
+                    if (defTd2) defTd2.appendChild(container);
+                    ta.focus();
+
+                    var replyHref = replyLink.getAttribute('href');
+
+                    submitBtn.addEventListener('click', function() {
+                        var text = ta.value.trim();
+                        if (!text) {
+                            statusEl.textContent = 'Please enter a reply.';
+                            statusEl.style.color = '#ef4444';
+                            return;
+                        }
+                        submitBtn.disabled = true;
+                        cancelBtn.disabled = true;
+                        statusEl.textContent = 'Submitting...';
+                        statusEl.style.color = '#828282';
+
+                        fetch(replyHref, { credentials: 'include' })
+                            .then(function(resp) {
+                                if (!resp.ok) throw new Error('Failed to load reply page');
+                                return resp.text();
+                            })
+                            .then(function(html) {
+                                var parser = new DOMParser();
+                                var doc = parser.parseFromString(html, 'text/html');
+                                var form = doc.querySelector('form[action="comment"]');
+                                if (!form) throw new Error('Not logged in or reply not available');
+                                var hmacInput = form.querySelector('input[name="hmac"]');
+                                var parentInput = form.querySelector('input[name="parent"]');
+                                var gotoInput = form.querySelector('input[name="goto"]');
+                                if (!hmacInput || !parentInput) throw new Error('Could not extract reply token');
+                                var formData = new URLSearchParams();
+                                formData.append('parent', parentInput.value);
+                                formData.append('goto', gotoInput ? gotoInput.value : '');
+                                formData.append('hmac', hmacInput.value);
+                                formData.append('text', text);
+                                return fetch('/comment', {
+                                    method: 'POST',
+                                    credentials: 'include',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: formData.toString()
+                                });
+                            })
+                            .then(function(resp) {
+                                if (!resp.ok) throw new Error('Failed to submit reply');
+                                statusEl.textContent = 'Reply posted!';
+                                statusEl.style.color = '#10b981';
+                                setTimeout(function() { window.location.reload(); }, 1000);
+                            })
+                            .catch(function(err) {
+                                statusEl.textContent = err.message || 'Error submitting reply';
+                                statusEl.style.color = '#ef4444';
+                                submitBtn.disabled = false;
+                                cancelBtn.disabled = false;
+                            });
+                    });
+
+                    cancelBtn.addEventListener('click', function() { container.remove(); });
+                });
             });
 
             function doSort(mode) {
