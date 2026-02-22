@@ -405,7 +405,7 @@ jobs:
                 <pubDate>$PUB_DATE</pubDate>
                 <sparkle:version>$BUILD_NUMBER</sparkle:version>
                 <sparkle:shortVersionString>$APP_VERSION</sparkle:shortVersionString>
-                <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
                 <enclosure
                   url="$DOWNLOAD_URL"
                   length="$DMG_LENGTH"
