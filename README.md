@@ -13,16 +13,6 @@ A native macOS client for [Hacker News](https://news.ycombinator.com), built wit
 ![Comments View](.github/screenshots/comments-view.png)
 ![Discussion View](.github/screenshots/discussion-view.png)
 
-## Features
-
-- Browse top, new, best, ask, show, and job stories
-- Read articles with built-in web view
-- Ad blocking and pop-up blocking
-- Comment threads with collapsible replies
-- HN account login and session management
-- Automatic updates via Sparkle
-- Native macOS look and feel
-
 ## Install
 
 Download the latest DMG from the [Releases](https://github.com/IronsideXXVI/Hacker-News/releases) page, open it, and drag the app to Applications. That's it — no Xcode or developer tools needed.
