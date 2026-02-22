@@ -63,30 +63,7 @@ struct SidebarView: View {
 
     private var storyListView: some View {
         Group {
-            if viewModel.contentType.isBookmarks && viewModel.stories.isEmpty && !viewModel.isSearchActive {
-                VStack(spacing: 8) {
-                    Spacer()
-                    Image(systemName: "bookmark")
-                        .font(.system(size: 36 * viewModel.textScale))
-                        .foregroundStyle(.tertiary)
-                    Text("No Bookmarks")
-                        .font(.system(size: 15 * viewModel.textScale, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Text("Bookmark stories to save them here.")
-                        .font(.system(size: 10 * viewModel.textScale))
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-            } else if viewModel.showLoadingIndicator && viewModel.stories.isEmpty {
-                VStack {
-                    Spacer()
-                    ProgressView(viewModel.contentType.isComments ? "Loading comments..." : viewModel.contentType.isThreads ? "Loading threads..." : viewModel.contentType.isAll ? "Loading feed..." : "Loading stories...")
-                        .font(.system(size: 13 * viewModel.textScale))
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-            } else if let error = viewModel.errorMessage, viewModel.stories.isEmpty {
+            if let error = viewModel.errorMessage, viewModel.stories.isEmpty {
                 VStack(spacing: 12) {
                     Spacer()
                     Text("Failed to load stories")
@@ -149,6 +126,7 @@ struct SidebarView: View {
             }
         }
     }
+
 }
 
 // MARK: - Row Selection Observer
