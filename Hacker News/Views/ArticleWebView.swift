@@ -542,7 +542,7 @@ struct ArticleWebView: NSViewRepresentable {
         let colorSchemeScript = WKUserScript(
             source: Self.colorSchemeMetaJS,
             injectionTime: .atDocumentStart,
-            forMainFrameOnly: false
+            forMainFrameOnly: true
         )
         config.userContentController.addUserScript(colorSchemeScript)
 
@@ -594,7 +594,7 @@ struct ArticleWebView: NSViewRepresentable {
             webView.underPageBackgroundColor = .windowBackgroundColor
         }
         let scheme = colorScheme == .dark ? "dark" : "light"
-        webView.evaluateJavaScript("document.documentElement.style.colorScheme = '\(scheme)'", completionHandler: nil)
+        webView.evaluateJavaScript("if (location.hostname.indexOf('ycombinator.com') !== -1) { document.documentElement.style.colorScheme = '\(scheme)'; }", completionHandler: nil)
         webView.pageZoom = CGFloat(textScale)
         if context.coordinator.currentURL != url {
             webView.evaluateJavaScript(Self.pauseAllMediaJS, completionHandler: nil)
@@ -764,10 +764,12 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static let colorSchemeMetaJS = """
     (function() {
-        var meta = document.createElement('meta');
-        meta.name = 'color-scheme';
-        meta.content = 'light dark';
-        document.head.appendChild(meta);
+        if (location.hostname.indexOf('ycombinator.com') !== -1) {
+            var meta = document.createElement('meta');
+            meta.name = 'color-scheme';
+            meta.content = 'light dark';
+            document.head.appendChild(meta);
+        }
     })();
     """
 
