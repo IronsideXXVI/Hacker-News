@@ -142,11 +142,15 @@ class WebViewProxy {
                     .hn-sort-btn { background: none; border: 1px solid #d5d5cf; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 12px; color: #666; transition: all 0.15s ease; } \\
                     .hn-sort-btn:hover { border-color: #ff6600; color: #ff6600; } \\
                     .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
+                    tr.athing.comtr > td > table > tbody > tr > td.ind { background: transparent; } \\
+                    tr.athing.comtr > td > table > tbody > tr > td.votelinks { background: transparent; } \\
+                    tr.athing.comtr > td > table > tbody > tr > td.default { background: rgba(128, 128, 128, 0.07); border-radius: 8px; padding: 6px 8px; margin: 4px 0; } \\
                     @media (prefers-color-scheme: dark) { \\
                         .hn-sort-btn { border-color: #444; color: #999; } \\
                         .hn-sort-btn:hover { border-color: #ff8533; color: #ff8533; } \\
                         .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
                         #hn-sort-bar .hn-sort-label { color: #666; } \\
+                        tr.athing.comtr > td > table > tbody > tr > td.default { background: rgba(255, 255, 255, 0.05); } \\
                     } \\
                 ';
                 document.head.appendChild(style);
