@@ -144,13 +144,15 @@ class WebViewProxy {
                     .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
                     tr.athing.comtr > td > table > tbody > tr > td.ind { background: transparent; } \\
                     tr.athing.comtr > td > table > tbody > tr > td.votelinks { background: transparent; } \\
-                    tr.athing.comtr > td > table > tbody > tr > td.default { background: rgba(128, 128, 128, 0.07); border-radius: 8px; padding: 6px 8px; margin: 4px 0; } \\
+                    tr.athing.comtr > td > table > tbody > tr > td.default { background: rgb(234, 234, 234); border-radius: 8px; padding: 6px 8px; margin: 4px 0; } \\
+                    .fatitem { background: rgb(234, 234, 234); border-radius: 8px; padding: 8px; width: 100% !important; box-sizing: border-box; } \\
                     @media (prefers-color-scheme: dark) { \\
                         .hn-sort-btn { border-color: #444; color: #999; } \\
                         .hn-sort-btn:hover { border-color: #ff8533; color: #ff8533; } \\
                         .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
                         #hn-sort-bar .hn-sort-label { color: #666; } \\
-                        tr.athing.comtr > td > table > tbody > tr > td.default { background: rgba(255, 255, 255, 0.05); } \\
+                        tr.athing.comtr > td > table > tbody > tr > td.default { background: rgb(51, 51, 51); } \\
+                        .fatitem { background: rgb(51, 51, 51); } \\
                     } \\
                 ';
                 document.head.appendChild(style);
