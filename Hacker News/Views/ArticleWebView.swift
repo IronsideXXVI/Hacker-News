@@ -684,6 +684,7 @@ struct ArticleWebView: NSViewRepresentable {
     var webViewProxy: WebViewProxy?
     var onCommentSortChanged: ((String) -> Void)?
     var onReadabilityChecked: ((Bool) -> Void)?
+    var onNavigateToItem: ((Int, ViewMode, URL?) -> Void)?
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -691,7 +692,7 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, onNavigateToItem: ((Int, ViewMode, URL?) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
@@ -699,6 +700,7 @@ struct ArticleWebView: NSViewRepresentable {
         self.webViewProxy = webViewProxy
         self.onCommentSortChanged = onCommentSortChanged
         self.onReadabilityChecked = onReadabilityChecked
+        self.onNavigateToItem = onNavigateToItem
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -774,6 +776,7 @@ struct ArticleWebView: NSViewRepresentable {
         config.userContentController.addUserScript(scrollScript)
         config.userContentController.add(context.coordinator, name: "scrollHandler")
         config.userContentController.add(context.coordinator, name: "commentSortHandler")
+        config.userContentController.add(context.coordinator, name: "hnItemHandler")
 
         if adBlockingEnabled, let ruleList = Self.cachedContentRuleList {
             config.userContentController.add(ruleList)
@@ -821,6 +824,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.loadHTMLString("", baseURL: nil)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "scrollHandler")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "commentSortHandler")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "hnItemHandler")
         webView.configuration.userContentController.removeAllContentRuleLists()
     }
 
@@ -1010,6 +1014,46 @@ struct ArticleWebView: NSViewRepresentable {
     })();
     """
 
+    // MARK: - Story Link Interception JS
+
+    private static let storyLinkInterceptionJS = """
+    (function() {
+        if (window.__hnStoryLinkInterceptionInstalled) return;
+        window.__hnStoryLinkInterceptionInstalled = true;
+
+        document.addEventListener('click', function(e) {
+            var target = e.target;
+            var link = null;
+            while (target && target !== document.body) {
+                if (target.tagName === 'A') { link = target; break; }
+                target = target.parentElement;
+            }
+            if (!link) return;
+
+            var titleline = link.closest('.titleline');
+            if (!titleline) return;
+
+            var storyRow = link.closest('tr.athing');
+            if (!storyRow) return;
+
+            var mainLink = titleline.querySelector('a');
+            if (link !== mainLink) return;
+
+            var itemID = parseInt(storyRow.getAttribute('id'), 10);
+            if (!itemID || isNaN(itemID)) return;
+
+            var href = link.getAttribute('href') || '';
+            if (href.indexOf('item?id=') !== -1) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+                window.webkit.messageHandlers.hnItemHandler.postMessage({id: itemID, url: window.location.href});
+            } catch(err) {}
+        }, true);
+    })();
+    """
+
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         var parent: ArticleWebView
         var currentURL: URL?
@@ -1021,6 +1065,15 @@ struct ArticleWebView: NSViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
+            if message.name == "hnItemHandler",
+               let dict = message.body as? [String: Any],
+               let itemID = dict["id"] as? Int {
+                let pageURL = (dict["url"] as? String).flatMap { URL(string: $0) }
+                DispatchQueue.main.async {
+                    self.parent.onNavigateToItem?(itemID, .post, pageURL)
+                }
+                return
+            }
             if message.name == "commentSortHandler", let mode = message.body as? String {
                 DispatchQueue.main.async {
                     self.parent.onCommentSortChanged?(mode)
@@ -1089,6 +1142,10 @@ struct ArticleWebView: NSViewRepresentable {
             webView.evaluateJavaScript(formJS, completionHandler: nil)
 
             parent.webViewProxy?.injectCommentSortUI()
+
+            if parent.onNavigateToItem != nil {
+                webView.evaluateJavaScript(ArticleWebView.storyLinkInterceptionJS, completionHandler: nil)
+            }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -1103,6 +1160,30 @@ struct ArticleWebView: NSViewRepresentable {
                 self.parent.loadError = error.localizedDescription
                 self.parent.isLoading = false
             }
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            guard let url = navigationAction.request.url,
+                  let callback = parent.onNavigateToItem,
+                  navigationAction.navigationType == .linkActivated else {
+                decisionHandler(.allow)
+                return
+            }
+
+            if let host = url.host, host.contains("ycombinator.com"),
+               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               url.path == "/item",
+               let idString = components.queryItems?.first(where: { $0.name == "id" })?.value,
+               let itemID = Int(idString) {
+                let currentPageURL = webView.url
+                decisionHandler(.cancel)
+                DispatchQueue.main.async {
+                    callback(itemID, .comments, currentPageURL)
+                }
+                return
+            }
+
+            decisionHandler(.allow)
         }
 
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {

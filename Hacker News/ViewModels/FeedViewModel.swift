@@ -72,6 +72,29 @@ final class FeedViewModel {
         selectedStory = story
     }
 
+    func navigateToStory(id: Int, viewMode: ViewMode, currentWebURL: URL?) {
+        guard selectedStory?.id != id else { return }
+        Task { @MainActor in
+            do {
+                let item = try await HNService.fetchItem(id: id)
+                // Build back entry using the web view's actual URL so back
+                // returns to the correct page (e.g. the date-filter listing)
+                let backEntry: NavigationEntry
+                if let webURL = currentWebURL, viewingUserProfileURL != nil {
+                    backEntry = .profile(webURL)
+                } else {
+                    backEntry = currentNavigationEntry
+                }
+                navigationBackStack.append(backEntry)
+                navigationForwardStack.removeAll()
+                self.viewMode = viewMode
+                self.selectedStory = item
+            } catch {
+                // Fetch failed — user stays on current page
+            }
+        }
+    }
+
     func navigateToProfile(url: URL) {
         guard viewingUserProfileURL != url else { return }
         navigationBackStack.append(currentNavigationEntry)

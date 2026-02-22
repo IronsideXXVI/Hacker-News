@@ -326,7 +326,7 @@ struct DetailView: View {
             scrollProgressBar()
             if viewModel.showFindBar { findBar() }
             ZStack {
-                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                     .id(webViewID)
                     .opacity(showContent ? 1 : 0)
                     .animation(.easeIn(duration: 0.2), value: showContent)
@@ -350,7 +350,7 @@ struct DetailView: View {
                 dualPaneView(articleURL: articleURL, commentsURL: story.commentsURL)
             } else {
                 ZStack {
-                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                         .id(webViewID)
                         .opacity(showContent ? 1 : 0)
                         .animation(.easeIn(duration: 0.2), value: showContent)
@@ -620,6 +620,7 @@ struct DetailView: View {
                             isWebViewLoading = false
                         }
                     },
+                    onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) },
                     scrollProgress: $scrollProgress,
                     isLoading: $isWebViewLoading,
                     loadError: $webLoadError
@@ -648,6 +649,7 @@ struct DetailView: View {
                     textScale: viewModel.textScale,
                     webViewProxy: commentsWebViewProxy,
                     onCommentSortChanged: handleCommentSortChanged,
+                    onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) },
                     scrollProgress: $commentsScrollProgress,
                     isLoading: $isCommentsWebViewLoading,
                     loadError: $commentsWebLoadError
