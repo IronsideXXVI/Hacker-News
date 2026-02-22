@@ -27,6 +27,7 @@ scripts/
 # Resources (un-ignore dmg-background for CI)
 resources/
 !resources/dmg-background.png
+!Hacker News/Resources/
 
 # OS files
 .DS_Store
