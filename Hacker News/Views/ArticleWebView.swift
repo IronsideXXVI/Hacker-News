@@ -199,6 +199,39 @@ class WebViewProxy {
                 if (offset > 0) sortBar.style.paddingLeft = offset + 'px';
             }
 
+            function needsPipe(el) {
+                var prev = el.previousSibling;
+                if (!prev) return true;
+                if (prev.nodeType === 3 && prev.textContent.trim() === '|') return false;
+                if (prev.nodeType === 3 && prev.textContent.indexOf('|') !== -1) return false;
+                return true;
+            }
+            document.querySelectorAll('.comhead').forEach(function(head) {
+                var age = head.querySelector('.age');
+                if (age && needsPipe(age)) {
+                    age.parentNode.insertBefore(document.createTextNode(' | '), age);
+                }
+                var togg = head.querySelector('.togg');
+                if (togg && needsPipe(togg)) {
+                    togg.parentNode.insertBefore(document.createTextNode(' | '), togg);
+                }
+                var walker = document.createTreeWalker(head, NodeFilter.SHOW_TEXT, null);
+                var node;
+                while (node = walker.nextNode()) {
+                    if (node.textContent.indexOf('[flagged]') !== -1) {
+                        var text = node.textContent;
+                        var idx = text.indexOf('[flagged]');
+                        var before = text.substring(0, idx);
+                        var after = text.substring(idx + 9);
+                        node.textContent = before + '| [flagged]';
+                        if (after) {
+                            node.parentNode.insertBefore(document.createTextNode(after), node.nextSibling);
+                        }
+                        break;
+                    }
+                }
+            });
+
             var nestColors = ['#ff6600', '#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899'];
             table.querySelectorAll('tr.athing.comtr').forEach(function(row) {
                 var indTd = row.querySelector('td.ind');
