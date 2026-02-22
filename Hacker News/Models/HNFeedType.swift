@@ -95,3 +95,21 @@ enum HNDisplaySort: String, CaseIterable, Identifiable {
         }
     }
 }
+
+enum HNCommentSort: String, CaseIterable, Identifiable {
+    case `default`
+    case newest
+    case oldest
+    case mostReplies
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .default: "Default"
+        case .newest: "Newest"
+        case .oldest: "Oldest"
+        case .mostReplies: "Most Replies"
+        }
+    }
+}

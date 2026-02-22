@@ -106,6 +106,190 @@ class WebViewProxy {
         matchCount = 0
         currentMatch = 0
     }
+
+    var commentSort: HNCommentSort = .default
+
+    func injectCommentSortUI() {
+        guard let webView else { return }
+        let jsMode: String
+        switch commentSort {
+        case .default: jsMode = "default"
+        case .newest: jsMode = "newest"
+        case .oldest: jsMode = "oldest"
+        case .mostReplies: jsMode = "mostReplies"
+        }
+        webView.evaluateJavaScript(Self.commentSortUIJS(activeSort: jsMode), completionHandler: nil)
+    }
+
+    private static func commentSortUIJS(activeSort: String) -> String {
+        """
+        (function() {
+            var table = document.querySelector('table.comment-tree');
+            if (!table) return;
+
+            if (!window.__hnOriginalOrder) {
+                window.__hnOriginalOrder = Array.from(table.querySelectorAll('tr.athing.comtr'));
+            }
+
+            var existing = document.getElementById('hn-sort-bar');
+            if (existing) existing.remove();
+            if (!document.getElementById('hn-sort-style')) {
+                var style = document.createElement('style');
+                style.id = 'hn-sort-style';
+                style.textContent = '\\
+                    #hn-sort-bar { padding: 8px 0; margin: 4px 0 8px 0; display: flex; align-items: center; gap: 6px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } \\
+                    #hn-sort-bar .hn-sort-label { font-size: 12px; color: #828282; margin-right: 2px; } \\
+                    .hn-sort-btn { background: none; border: 1px solid #d5d5cf; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 12px; color: #666; transition: all 0.15s ease; } \\
+                    .hn-sort-btn:hover { border-color: #ff6600; color: #ff6600; } \\
+                    .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
+                    @media (prefers-color-scheme: dark) { \\
+                        .hn-sort-btn { border-color: #444; color: #999; } \\
+                        .hn-sort-btn:hover { border-color: #ff8533; color: #ff8533; } \\
+                        .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
+                        #hn-sort-bar .hn-sort-label { color: #666; } \\
+                    } \\
+                ';
+                document.head.appendChild(style);
+            }
+
+            var sortBar = document.createElement('div');
+            sortBar.id = 'hn-sort-bar';
+
+            var label = document.createElement('span');
+            label.className = 'hn-sort-label';
+            label.textContent = 'Sort:';
+            sortBar.appendChild(label);
+
+            var modes = [
+                { id: 'default', label: 'Default' },
+                { id: 'newest', label: 'Newest' },
+                { id: 'oldest', label: 'Oldest' },
+                { id: 'mostReplies', label: 'Most Replies' }
+            ];
+
+            var activeSort = '\(activeSort)';
+
+            modes.forEach(function(m) {
+                var btn = document.createElement('button');
+                btn.className = 'hn-sort-btn' + (m.id === activeSort ? ' active' : '');
+                btn.setAttribute('data-sort', m.id);
+                btn.textContent = m.label;
+                btn.addEventListener('click', function() {
+                    sortBar.querySelectorAll('.hn-sort-btn').forEach(function(b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    doSort(m.id);
+                    try { window.webkit.messageHandlers.commentSortHandler.postMessage(m.id); } catch(e) {}
+                });
+                sortBar.appendChild(btn);
+            });
+
+            table.parentNode.insertBefore(sortBar, table);
+
+            function doSort(mode) {
+                var parent = table.querySelector('tbody') || table;
+                if (mode === 'default') {
+                    var frag = document.createDocumentFragment();
+                    window.__hnOriginalOrder.forEach(function(row) { frag.appendChild(row); });
+                    parent.appendChild(frag);
+                    fixPrevNext();
+                    return;
+                }
+
+                var allRows = Array.from(parent.querySelectorAll('tr.athing.comtr'));
+                var threads = [];
+                var currentThread = null;
+
+                allRows.forEach(function(row) {
+                    var indTd = row.querySelector('td.ind');
+                    var indent = indTd ? parseInt(indTd.getAttribute('indent') || '0', 10) : 0;
+                    if (indent === 0) {
+                        currentThread = { root: row, children: [], timestamp: 0, replyCount: 0 };
+                        threads.push(currentThread);
+                    } else if (currentThread) {
+                        currentThread.children.push(row);
+                    }
+                });
+
+                threads.forEach(function(thread) {
+                    var ageSpan = thread.root.querySelector('span.age');
+                    var title = ageSpan ? (ageSpan.getAttribute('title') || '') : '';
+                    var parts = title.split(' ');
+                    thread.timestamp = parts.length >= 2 ? parseInt(parts[parts.length - 1], 10) : 0;
+                    if (isNaN(thread.timestamp)) {
+                        var dateVal = Date.parse(parts[0]);
+                        thread.timestamp = isNaN(dateVal) ? 0 : dateVal / 1000;
+                    }
+                    thread.replyCount = thread.children.length;
+                });
+
+                if (mode === 'newest') {
+                    threads.sort(function(a, b) { return b.timestamp - a.timestamp; });
+                } else if (mode === 'oldest') {
+                    threads.sort(function(a, b) { return a.timestamp - b.timestamp; });
+                } else if (mode === 'mostReplies') {
+                    threads.sort(function(a, b) { return b.replyCount - a.replyCount; });
+                }
+
+                var frag = document.createDocumentFragment();
+                threads.forEach(function(thread) {
+                    frag.appendChild(thread.root);
+                    thread.children.forEach(function(child) { frag.appendChild(child); });
+                });
+                parent.appendChild(frag);
+                fixPrevNext();
+            }
+
+            function fixPrevNext() {
+                if (!window.__hnOriginalPrevNext) {
+                    window.__hnOriginalPrevNext = [];
+                    table.querySelectorAll('tr.athing.comtr').forEach(function(row) {
+                        row.querySelectorAll('.comhead a').forEach(function(a) {
+                            var text = a.textContent.trim();
+                            if (text === 'prev' || text === 'next') {
+                                window.__hnOriginalPrevNext.push({ link: a, href: a.getAttribute('href'), display: a.style.display, prevText: a.previousSibling ? a.previousSibling.textContent : '' });
+                            }
+                        });
+                    });
+                }
+                window.__hnOriginalPrevNext.forEach(function(entry) {
+                    entry.link.style.display = '';
+                    if (entry.link.previousSibling && entry.prevText) entry.link.previousSibling.textContent = entry.prevText;
+                });
+                var parent = table.querySelector('tbody') || table;
+                var allRows = Array.from(parent.querySelectorAll('tr.athing.comtr'));
+                allRows.forEach(function(row, rowIndex) {
+                    var indTd = row.querySelector('td.ind');
+                    var indent = indTd ? parseInt(indTd.getAttribute('indent') || '0', 10) : 0;
+                    row.querySelectorAll('.comhead a').forEach(function(a) {
+                        var text = a.textContent.trim();
+                        if (text !== 'prev' && text !== 'next') return;
+                        var dir = text === 'next' ? 1 : -1;
+                        var targetId = null;
+                        for (var i = rowIndex + dir; i >= 0 && i < allRows.length; i += dir) {
+                            var td = allRows[i].querySelector('td.ind');
+                            var ci = td ? parseInt(td.getAttribute('indent') || '0', 10) : 0;
+                            if (ci === indent) { targetId = allRows[i].id; break; }
+                            if (ci < indent) break;
+                        }
+                        if (targetId) {
+                            var href = a.getAttribute('href') || '';
+                            a.setAttribute('href', href.split('#')[0] + '#' + targetId);
+                        } else {
+                            a.style.display = 'none';
+                            if (a.previousSibling && a.previousSibling.nodeType === 3) {
+                                a.previousSibling.textContent = a.previousSibling.textContent.replace(/\\s*\\|\\s*$/, '');
+                            }
+                        }
+                    });
+                });
+            }
+
+            if (activeSort !== 'default') {
+                doSort(activeSort);
+            }
+        })();
+        """
+    }
 }
 
 struct ArticleWebView: NSViewRepresentable {
@@ -114,6 +298,7 @@ struct ArticleWebView: NSViewRepresentable {
     let popUpBlockingEnabled: Bool
     let textScale: Double
     var webViewProxy: WebViewProxy?
+    var onCommentSortChanged: ((String) -> Void)?
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -121,12 +306,13 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
         self.textScale = textScale
         self.webViewProxy = webViewProxy
+        self.onCommentSortChanged = onCommentSortChanged
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -201,6 +387,7 @@ struct ArticleWebView: NSViewRepresentable {
         )
         config.userContentController.addUserScript(scrollScript)
         config.userContentController.add(context.coordinator, name: "scrollHandler")
+        config.userContentController.add(context.coordinator, name: "commentSortHandler")
 
         if adBlockingEnabled, let ruleList = Self.cachedContentRuleList {
             config.userContentController.add(ruleList)
@@ -247,6 +434,7 @@ struct ArticleWebView: NSViewRepresentable {
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.loadHTMLString("", baseURL: nil)
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "scrollHandler")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "commentSortHandler")
         webView.configuration.userContentController.removeAllContentRuleLists()
     }
 
@@ -444,6 +632,12 @@ struct ArticleWebView: NSViewRepresentable {
 
         func userContentController(_ userContentController: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
+            if message.name == "commentSortHandler", let mode = message.body as? String {
+                DispatchQueue.main.async {
+                    self.parent.onCommentSortChanged?(mode)
+                }
+                return
+            }
             if let value = message.body as? Double {
                 DispatchQueue.main.async {
                     self.parent.scrollProgress = value
@@ -474,6 +668,8 @@ struct ArticleWebView: NSViewRepresentable {
 
             let formJS = ArticleWebView.cssInjectionJS(css: ArticleWebView.formStylingCSS)
             webView.evaluateJavaScript(formJS, completionHandler: nil)
+
+            parent.webViewProxy?.injectCommentSortUI()
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

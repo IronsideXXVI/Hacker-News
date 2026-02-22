@@ -170,6 +170,10 @@ final class FeedViewModel {
         didSet { UserDefaults.standard.set(viewMode.rawValue, forKey: "viewMode") }
     }
 
+    var commentSort: HNCommentSort {
+        didSet { UserDefaults.standard.set(commentSort.rawValue, forKey: "commentSort") }
+    }
+
     var adBlockingEnabled: Bool {
         didSet {
             UserDefaults.standard.set(adBlockingEnabled, forKey: "adBlockingEnabled")
@@ -229,6 +233,7 @@ final class FeedViewModel {
         self.popUpBlockingEnabled = UserDefaults.standard.object(forKey: "popUpBlockingEnabled") as? Bool ?? true
         self.textScale = UserDefaults.standard.object(forKey: "textScale") as? Double ?? 1.0
         self.appearanceMode = (UserDefaults.standard.string(forKey: "appearanceMode")).flatMap(AppearanceMode.init(rawValue:)) ?? .system
+        self.commentSort = (UserDefaults.standard.string(forKey: "commentSort")).flatMap(HNCommentSort.init(rawValue:)) ?? .default
         if let data = UserDefaults.standard.data(forKey: bookmarksKey),
            let items = try? JSONDecoder().decode([HNItem].self, from: data) {
             self.bookmarkedItems = items

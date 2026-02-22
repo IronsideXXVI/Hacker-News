@@ -329,7 +329,7 @@ struct DetailView: View {
                 dualPaneView(articleURL: articleURL, commentsURL: story.commentsURL)
             } else {
                 ZStack {
-                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                         .id(webViewID)
                         .opacity(showContent ? 1 : 0)
                         .animation(.easeIn(duration: 0.2), value: showContent)
@@ -464,6 +464,8 @@ struct DetailView: View {
     }
 
     private func beginNavigation() {
+        webViewProxy.commentSort = viewModel.commentSort
+        commentsWebViewProxy.commentSort = viewModel.commentSort
         scrollProgress = 0
         isWebViewLoading = true
         webLoadError = nil
@@ -523,6 +525,14 @@ struct DetailView: View {
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, commentsWebLoadError != nil else { return }
             showCommentsError = true
+        }
+    }
+
+    private func handleCommentSortChanged(_ mode: String) {
+        if let sort = HNCommentSort(rawValue: mode) {
+            viewModel.commentSort = sort
+            webViewProxy.commentSort = sort
+            commentsWebViewProxy.commentSort = sort
         }
     }
 
@@ -588,6 +598,7 @@ struct DetailView: View {
                     popUpBlockingEnabled: viewModel.popUpBlockingEnabled,
                     textScale: viewModel.textScale,
                     webViewProxy: commentsWebViewProxy,
+                    onCommentSortChanged: handleCommentSortChanged,
                     scrollProgress: $commentsScrollProgress,
                     isLoading: $isCommentsWebViewLoading,
                     loadError: $commentsWebLoadError
