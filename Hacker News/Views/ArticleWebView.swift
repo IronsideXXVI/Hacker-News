@@ -144,7 +144,7 @@ class WebViewProxy {
                     .hn-sort-btn.active { background: #ff6600; border-color: #ff6600; color: white; } \\
                     tr.athing.comtr > td > table > tbody > tr > td.ind { background: transparent; } \\
                     tr.athing.comtr > td > table > tbody > tr > td.votelinks { background: transparent; } \\
-                    tr.athing.comtr > td > table > tbody > tr > td.default { background: rgb(234, 234, 234); border-radius: 8px; padding: 6px 8px; margin: 4px 0; } \\
+                    tr.athing.comtr > td > table > tbody > tr > td.default { background: rgb(234, 234, 234); border-radius: 8px; padding: 6px 8px; margin: 4px 0; border-left: 3px solid transparent; } \\
                     .fatitem { background: rgb(234, 234, 234); border-radius: 8px; padding: 8px; width: 100% !important; box-sizing: border-box; } \\
                     @media (prefers-color-scheme: dark) { \\
                         .hn-sort-btn { border-color: #444; color: #999; } \\
@@ -198,6 +198,16 @@ class WebViewProxy {
                 var offset = btnLeft - barLeft;
                 if (offset > 0) sortBar.style.paddingLeft = offset + 'px';
             }
+
+            var nestColors = ['#ff6600', '#3b82f6', '#a855f7', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899'];
+            table.querySelectorAll('tr.athing.comtr').forEach(function(row) {
+                var indTd = row.querySelector('td.ind');
+                var indent = indTd ? parseInt(indTd.getAttribute('indent') || '0', 10) : 0;
+                var defTd = row.querySelector('td.default');
+                if (defTd && indent > 0) {
+                    defTd.style.borderLeftColor = nestColors[(indent - 1) % nestColors.length];
+                }
+            });
 
             function doSort(mode) {
                 var parent = table.querySelector('tbody') || table;
