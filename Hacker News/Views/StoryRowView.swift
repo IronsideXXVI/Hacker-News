@@ -8,7 +8,7 @@ struct StoryRowView: View {
     var onUsernameTap: ((String) -> Void)?
 
     private var adaptiveSecondary: Color {
-        isSelected ? .white.opacity(0.7) : .secondary
+        isSelected ? .white : .secondary
     }
 
     var body: some View {
