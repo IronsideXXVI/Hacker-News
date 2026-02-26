@@ -4,6 +4,7 @@ import WebKit
 import Observation
 
 @Observable
+@MainActor
 final class HNAuthManager {
     var isLoggedIn = false
     var username = ""
