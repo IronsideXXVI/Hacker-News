@@ -82,6 +82,11 @@ struct SettingsView: View {
             }
 
             Section {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Created by Dylan Ironside")
+                    Text("Free and Open Source, MIT License")
+                }
+                .foregroundStyle(.secondary)
                 Link(destination: URL(string: "https://github.com/IronsideXXVI")!) {
                     Label {
                         Text("GitHub")
@@ -91,9 +96,27 @@ struct SettingsView: View {
                             .foregroundStyle(.white)
                     }
                 }
+                Link(destination: URL(string: "https://x.com/IronsideXXVI")!) {
+                    Label {
+                        Text("X")
+                            .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
+                    } icon: {
+                        Image(systemName: "link")
+                            .foregroundStyle(.white)
+                    }
+                }
+                Link(destination: URL(string: "https://github.com/IronsideXXVI/Hacker-News")!) {
+                    Label {
+                        Text("Project Repository")
+                            .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
+                    } icon: {
+                        Image(systemName: "book.closed")
+                            .foregroundStyle(.white)
+                    }
+                }
                 Link(destination: URL(string: "https://github.com/sponsors/IronsideXXVI")!) {
                     Label {
-                        Text("Sponsor")
+                        Text("Donate")
                             .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
                     } icon: {
                         Image(systemName: "heart")
