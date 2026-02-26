@@ -267,7 +267,9 @@ final class HNAuthManager {
 
     private func injectCookie(_ cookie: HTTPCookie) async {
         await WKWebsiteDataStore.default().httpCookieStore.setCookie(cookie)
-        HTTPCookieStorage.shared.setCookie(cookie)
+        await Task.detached(priority: .utility) {
+            HTTPCookieStorage.shared.setCookie(cookie)
+        }.value
     }
 }
 
