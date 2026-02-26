@@ -93,7 +93,7 @@ struct SettingsView: View {
                             .foregroundStyle(.tint)
                     } icon: {
                         Image(systemName: "link")
-                            .foregroundStyle(.white)
+                            .foregroundColor(Color(NSColor.labelColor))
                     }
                 }
                 Link(destination: URL(string: "https://x.com/IronsideXXVI")!) {
@@ -102,7 +102,7 @@ struct SettingsView: View {
                             .foregroundStyle(.tint)
                     } icon: {
                         Image(systemName: "link")
-                            .foregroundStyle(.white)
+                            .foregroundColor(Color(NSColor.labelColor))
                     }
                 }
                 Link(destination: URL(string: "https://github.com/IronsideXXVI/Hacker-News")!) {
@@ -111,7 +111,7 @@ struct SettingsView: View {
                             .foregroundStyle(.tint)
                     } icon: {
                         Image(systemName: "book.closed")
-                            .foregroundStyle(.white)
+                            .foregroundColor(Color(NSColor.labelColor))
                     }
                 }
                 Link(destination: URL(string: "https://github.com/sponsors/IronsideXXVI")!) {
@@ -120,7 +120,7 @@ struct SettingsView: View {
                             .foregroundStyle(.tint)
                     } icon: {
                         Image(systemName: "heart")
-                            .foregroundStyle(.white)
+                            .foregroundColor(Color(NSColor.labelColor))
                     }
                 }
             } header: {
