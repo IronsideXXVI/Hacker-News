@@ -358,9 +358,13 @@ final class FeedViewModel {
         do {
             let author = contentType.isThreads ? loggedInUsername : nil
             let result = try await HNService.fetchFeed(contentType: contentType, dateRange: dateRange, displaySort: displaySort, page: currentPage, author: author)
-            stories.append(contentsOf: result.items)
-            hasMore = result.hasMore
-            currentPage += 1
+            let existingIDs = Set(stories.map(\.id))
+            let newItems = result.items.filter { !existingIDs.contains($0.id) }
+            withAnimation(nil) {
+                stories.append(contentsOf: newItems)
+                hasMore = result.hasMore
+                currentPage += 1
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

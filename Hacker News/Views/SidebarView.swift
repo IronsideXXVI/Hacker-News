@@ -3,7 +3,6 @@ import SwiftUI
 struct SidebarView: View {
     @Bindable var viewModel: FeedViewModel
     var authManager: HNAuthManager
-    @State private var listSelection: HNItem?
     @State private var showingLoginSheet = false
 
     var body: some View {
@@ -83,26 +82,35 @@ struct SidebarView: View {
                 }
                 .frame(maxWidth: .infinity)
             } else {
-                List(selection: $listSelection) {
-                    ForEach(Array(viewModel.visibleStories.enumerated()), id: \.element.id) { index, item in
-                        RowSelectionReader { isSelected in
-                            Group {
-                                if item.type == "comment" {
-                                    CommentRowView(comment: item, textScale: viewModel.textScale, isSelected: isSelected) { username in
-                                        if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
-                                            viewModel.navigateToProfile(url: url)
-                                        }
+                let stories = viewModel.visibleStories
+                List {
+                    ForEach(stories) { item in
+                        let isSelected = viewModel.selectedStory?.id == item.id
+                        Group {
+                            if item.type == "comment" {
+                                CommentRowView(comment: item, textScale: viewModel.textScale, isSelected: isSelected) { username in
+                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                        viewModel.navigateToProfile(url: url)
                                     }
-                                } else {
-                                    StoryRowView(story: item, rank: index + 1, textScale: viewModel.textScale, isSelected: isSelected) { username in
-                                        if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
-                                            viewModel.navigateToProfile(url: url)
-                                        }
+                                }
+                            } else {
+                                let rank = (stories.firstIndex(where: { $0.id == item.id }) ?? 0) + 1
+                                StoryRowView(story: item, rank: rank, textScale: viewModel.textScale, isSelected: isSelected) { username in
+                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                        viewModel.navigateToProfile(url: url)
                                     }
                                 }
                             }
                         }
-                        .tag(item)
+                        .listRowBackground(
+                            isSelected
+                                ? RoundedRectangle(cornerRadius: 5).fill(Color.accentColor)
+                                : nil
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            viewModel.navigate(to: item)
+                        }
                         .contextMenu {
                             Button {
                                 viewModel.toggleBookmark(item)
@@ -151,102 +159,9 @@ struct SidebarView: View {
                     }
                 }
                 .listStyle(.sidebar)
-                .onChange(of: listSelection) { _, newValue in
-                    if let story = newValue {
-                        viewModel.navigate(to: story)
-                    }
-                }
-                .onChange(of: viewModel.selectedStory) { _, newValue in
-                    if listSelection != newValue {
-                        listSelection = newValue
-                    }
-                }
             }
         }
     }
 
 }
 
-// MARK: - Row Selection Observer
-
-private struct RowSelectionReader<Content: View>: View {
-    @State private var isSelected = false
-    @ViewBuilder let content: (Bool) -> Content
-
-    var body: some View {
-        content(isSelected)
-            .background(RowSelectionObserver(isSelected: $isSelected))
-    }
-}
-
-private struct RowSelectionObserver: NSViewRepresentable {
-    @Binding var isSelected: Bool
-
-    func makeNSView(context: Context) -> RowSelectionNSView {
-        let view = RowSelectionNSView()
-        view.onSelectionChange = { selected in
-            isSelected = selected
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: RowSelectionNSView, context: Context) {}
-}
-
-private class RowSelectionNSView: NSView {
-    var onSelectionChange: ((Bool) -> Void)?
-    private var selectedObservation: NSKeyValueObservation?
-    private var emphasizedObservation: NSKeyValueObservation?
-    private weak var rowView: NSTableRowView?
-
-    override var intrinsicContentSize: NSSize { .zero }
-
-    override func viewDidMoveToSuperview() {
-        super.viewDidMoveToSuperview()
-        attemptObservation()
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        attemptObservation()
-    }
-
-    private func attemptObservation() {
-        guard selectedObservation == nil, superview != nil else { return }
-
-        if !findAndObserveRowView() {
-            DispatchQueue.main.async { [weak self] in
-                self?.findAndObserveRowView()
-            }
-        }
-    }
-
-    private func notifyChange() {
-        guard let rowView else { return }
-        let highlighted = rowView.isSelected && rowView.isEmphasized
-        DispatchQueue.main.async { [weak self] in
-            self?.onSelectionChange?(highlighted)
-        }
-    }
-
-    @discardableResult
-    private func findAndObserveRowView() -> Bool {
-        guard selectedObservation == nil else { return true }
-
-        var current: NSView? = superview
-        while let view = current {
-            if let row = view as? NSTableRowView {
-                rowView = row
-                selectedObservation = row.observe(\.isSelected, options: [.new, .initial]) { [weak self] _, _ in
-                    self?.notifyChange()
-                }
-                emphasizedObservation = row.observe(\.isEmphasized, options: [.new]) { [weak self] _, _ in
-                    self?.notifyChange()
-                }
-                return true
-            }
-            current = view.superview
-        }
-        return false
-    }
-}
