@@ -1065,15 +1065,15 @@ struct ArticleWebView: NSViewRepresentable {
     })();
     """
 
-    // MARK: - Hide Link Interception JS
+    // MARK: - Auth Action Interception JS
 
-    private static func hideInterceptionJS(isLoggedIn: Bool) -> String {
+    private static func authActionInterceptionJS(isLoggedIn: Bool) -> String {
         """
         (function() {
             window.__hnIsLoggedIn = \(isLoggedIn);
 
-            if (window.__hnHideInterceptionInstalled) return;
-            window.__hnHideInterceptionInstalled = true;
+            if (window.__hnAuthActionInterceptionInstalled) return;
+            window.__hnAuthActionInterceptionInstalled = true;
 
             document.addEventListener('click', function(e) {
                 var target = e.target;
@@ -1085,17 +1085,28 @@ struct ArticleWebView: NSViewRepresentable {
                 if (!link) return;
 
                 var href = link.getAttribute('href') || '';
+
+                // Intercept vote, fave, reply links when logged out
+                if (!window.__hnIsLoggedIn) {
+                    if (href.indexOf('vote?') !== -1 ||
+                        href.indexOf('fave?') !== -1 ||
+                        href.indexOf('reply?') !== -1 ||
+                        href.indexOf('hide?id=') !== -1) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try {
+                            window.webkit.messageHandlers.hnLoginHandler.postMessage(true);
+                        } catch(err) {}
+                        return;
+                    }
+                    return;
+                }
+
+                // Logged in — only intercept hide links (vote/fave/reply use default behavior)
                 if (href.indexOf('hide?id=') === -1) return;
 
                 e.preventDefault();
                 e.stopPropagation();
-
-                if (!window.__hnIsLoggedIn) {
-                    try {
-                        window.webkit.messageHandlers.hnLoginHandler.postMessage(true);
-                    } catch(err) {}
-                    return;
-                }
 
                 var idMatch = href.match(/id=(\\d+)/);
                 if (!idMatch) return;
@@ -1240,7 +1251,7 @@ struct ArticleWebView: NSViewRepresentable {
             }
 
             if parent.onHideToggled != nil || parent.onLoginRequired != nil {
-                webView.evaluateJavaScript(ArticleWebView.hideInterceptionJS(isLoggedIn: parent.isLoggedIn), completionHandler: nil)
+                webView.evaluateJavaScript(ArticleWebView.authActionInterceptionJS(isLoggedIn: parent.isLoggedIn), completionHandler: nil)
             }
         }
 
