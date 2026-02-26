@@ -47,6 +47,8 @@ struct LoginSheetView: View {
                 await authManager.login(username: username, password: password)
             }
         }
+        .buttonStyle(.borderedProminent)
+        .tint(Color(red: 1.0, green: 0.4, blue: 0.0))
         .keyboardShortcut(.return, modifiers: [])
         .disabled(username.isEmpty || password.isEmpty || authManager.isLoggingIn)
 
@@ -54,7 +56,8 @@ struct LoginSheetView: View {
             resetUsername = username
             showingForgotPassword = true
         }
-        .buttonStyle(.link)
+        .buttonStyle(.plain)
+        .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
         .font(.caption)
 
         Divider()
@@ -74,6 +77,8 @@ struct LoginSheetView: View {
                 await authManager.createAccount(username: newUsername, password: newPassword)
             }
         }
+        .buttonStyle(.borderedProminent)
+        .tint(Color(red: 1.0, green: 0.4, blue: 0.0))
         .disabled(newUsername.isEmpty || newPassword.isEmpty || authManager.isLoggingIn)
 
         if let error = authManager.loginError {
@@ -106,6 +111,8 @@ struct LoginSheetView: View {
                 await authManager.resetPassword(username: resetUsername)
             }
         }
+        .buttonStyle(.borderedProminent)
+        .tint(Color(red: 1.0, green: 0.4, blue: 0.0))
         .keyboardShortcut(.return, modifiers: [])
         .disabled(resetUsername.isEmpty || authManager.isResettingPassword)
 
@@ -126,7 +133,8 @@ struct LoginSheetView: View {
             authManager.resetError = nil
             authManager.resetSuccess = false
         }
-        .buttonStyle(.link)
+        .buttonStyle(.plain)
+        .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
         .font(.caption)
 
         Button("Cancel", role: .cancel) {

@@ -1075,6 +1075,21 @@ struct ArticleWebView: NSViewRepresentable {
             if (window.__hnAuthActionInterceptionInstalled) return;
             window.__hnAuthActionInterceptionInstalled = true;
 
+            // Intercept comment/reply form submissions when logged out
+            document.addEventListener('submit', function(e) {
+                if (window.__hnIsLoggedIn) return;
+                var form = e.target;
+                if (!form || form.tagName !== 'FORM') return;
+                var action = form.getAttribute('action') || '';
+                if (action === 'comment' || action.indexOf('/comment') !== -1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        window.webkit.messageHandlers.hnLoginHandler.postMessage(true);
+                    } catch(err) {}
+                }
+            }, true);
+
             document.addEventListener('click', function(e) {
                 var target = e.target;
                 var link = null;
