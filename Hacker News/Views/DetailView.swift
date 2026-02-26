@@ -28,6 +28,7 @@ struct DetailView: View {
     @State private var commentsMinDelayTask: Task<Void, Never>?
     @State private var commentsWebViewProxy = WebViewProxy()
     @State private var commentsWebViewID = UUID()
+    @FocusState private var isFindFieldFocused: Bool
 
     @ViewBuilder
     private var mainContent: some View {
@@ -57,7 +58,7 @@ struct DetailView: View {
     var body: some View {
         contentWithChangeHandlers
             .onChange(of: viewModel.webRefreshID) { webViewID = UUID(); commentsWebViewID = UUID() }
-            .onChange(of: viewModel.showFindBar) { if !viewModel.showFindBar { viewModel.findQuery = ""; activeWebViewProxy.clearSelection() } }
+            .onChange(of: viewModel.showFindBar) { if !viewModel.showFindBar { viewModel.findQuery = ""; activeWebViewProxy.clearSelection() } else { isFindFieldFocused = true } }
             .onChange(of: viewModel.findNextTrigger) { activeWebViewProxy.findNext(viewModel.findQuery) }
             .onChange(of: viewModel.findPreviousTrigger) { activeWebViewProxy.findPrevious(viewModel.findQuery) }
             .onChange(of: viewModel.goBackTrigger) {
@@ -225,6 +226,7 @@ struct DetailView: View {
                 TextField("Find in page...", text: $viewModel.findQuery)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
+                    .focused($isFindFieldFocused)
                     .onSubmit {
                         proxy.findNext(viewModel.findQuery)
                     }
