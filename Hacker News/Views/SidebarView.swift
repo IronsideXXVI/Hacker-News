@@ -84,7 +84,7 @@ struct SidebarView: View {
             } else {
                 let stories = viewModel.visibleStories
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(stories) { item in
                             let isSelected = viewModel.selectedStory?.id == item.id
                             Group {
@@ -103,6 +103,7 @@ struct SidebarView: View {
                                     }
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 5)
