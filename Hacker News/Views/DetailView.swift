@@ -230,6 +230,14 @@ struct DetailView: View {
                     .onSubmit {
                         proxy.findNext(viewModel.findQuery)
                     }
+                    .onKeyPress(.upArrow) {
+                        proxy.findPrevious(viewModel.findQuery)
+                        return .handled
+                    }
+                    .onKeyPress(.downArrow) {
+                        proxy.findNext(viewModel.findQuery)
+                        return .handled
+                    }
                     .onKeyPress(.escape) {
                         viewModel.showFindBar = false
                         return .handled
