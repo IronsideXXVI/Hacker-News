@@ -3,6 +3,7 @@ import SwiftUI
 struct DetailView: View {
     @Bindable var viewModel: FeedViewModel
     var authManager: HNAuthManager
+    var hideManager: HNHideManager
     @Binding var columnVisibility: NavigationSplitViewVisibility
     @State private var showingLoginSheet = false
     @State private var scrollProgress: Double = 0.0
@@ -37,7 +38,7 @@ struct DetailView: View {
         } else if let story = viewModel.selectedStory {
             storyContentView(for: story)
         } else {
-            StoryGridView(viewModel: viewModel)
+            StoryGridView(viewModel: viewModel, isLoggedIn: authManager.isLoggedIn)
         }
     }
 
@@ -146,6 +147,20 @@ struct DetailView: View {
                     Image(systemName: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
                 }
                 .help(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Add Bookmark")
+                if authManager.isLoggedIn {
+                    Button {
+                        Task {
+                            if viewModel.isHidden(story) {
+                                await viewModel.unhideStory(story)
+                            } else {
+                                await viewModel.hideStory(story)
+                            }
+                        }
+                    } label: {
+                        Image(systemName: viewModel.isHidden(story) ? "eye" : "eye.slash")
+                    }
+                    .help(viewModel.isHidden(story) ? "Unhide Story" : "Hide Story")
+                }
             }
             if let url = currentExternalURL {
                 ShareLink(item: url) {
@@ -326,7 +341,7 @@ struct DetailView: View {
             scrollProgressBar()
             if viewModel.showFindBar { findBar() }
             ZStack {
-                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, onHideToggled: handleHideToggled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                     .id(webViewID)
                     .opacity(showContent ? 1 : 0)
                     .animation(.easeIn(duration: 0.2), value: showContent)
@@ -350,7 +365,7 @@ struct DetailView: View {
                 dualPaneView(articleURL: articleURL, commentsURL: story.commentsURL)
             } else {
                 ZStack {
-                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, onHideToggled: handleHideToggled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                         .id(webViewID)
                         .opacity(showContent ? 1 : 0)
                         .animation(.easeIn(duration: 0.2), value: showContent)
@@ -564,6 +579,10 @@ struct DetailView: View {
         }
     }
 
+    private func handleHideToggled(itemID: Int, isUnhide: Bool) {
+        hideManager.onItemHiddenFromWeb(id: itemID, isUnhide: isUnhide)
+    }
+
     private func handleCommentSortChanged(_ mode: String) {
         if let sort = HNCommentSort(rawValue: mode) {
             viewModel.commentSort = sort
@@ -650,6 +669,7 @@ struct DetailView: View {
                     webViewProxy: commentsWebViewProxy,
                     onCommentSortChanged: handleCommentSortChanged,
                     onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) },
+                    onHideToggled: handleHideToggled,
                     scrollProgress: $commentsScrollProgress,
                     isLoading: $isCommentsWebViewLoading,
                     loadError: $commentsWebLoadError

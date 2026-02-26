@@ -66,6 +66,12 @@ final class HNAuthManager {
             await cookieStore.deleteCookie(cookie)
         }
 
+        if let sharedCookies = HTTPCookieStorage.shared.cookies {
+            for cookie in sharedCookies where cookie.domain.contains("news.ycombinator.com") {
+                HTTPCookieStorage.shared.deleteCookie(cookie)
+            }
+        }
+
         deleteFromKeychain()
         isLoggedIn = false
         username = ""
@@ -260,6 +266,7 @@ final class HNAuthManager {
 
     private func injectCookie(_ cookie: HTTPCookie) async {
         await WKWebsiteDataStore.default().httpCookieStore.setCookie(cookie)
+        HTTPCookieStorage.shared.setCookie(cookie)
     }
 }
 

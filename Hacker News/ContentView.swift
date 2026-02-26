@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var viewModel = FeedViewModel()
     @State private var authManager = HNAuthManager()
+    @State private var hideManager = HNHideManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
@@ -10,22 +11,31 @@ struct ContentView: View {
             columnVisibility: $columnVisibility
         ) {
             Group {
-                SidebarView(viewModel: viewModel)
+                SidebarView(viewModel: viewModel, isLoggedIn: authManager.isLoggedIn)
                     .toolbar(removing: .sidebarToggle)
             }
             .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 375)
         } detail: {
-            DetailView(viewModel: viewModel, authManager: authManager, columnVisibility: $columnVisibility)
+            DetailView(viewModel: viewModel, authManager: authManager, hideManager: hideManager, columnVisibility: $columnVisibility)
         }
         .task {
             await authManager.restoreSession()
             viewModel.loggedInUsername = authManager.isLoggedIn ? authManager.username : nil
+            viewModel.hideManager = hideManager
+            if authManager.isLoggedIn {
+                await hideManager.syncHiddenList(username: authManager.username)
+            }
             await viewModel.loadFeed()
         }
         .onChange(of: authManager.isLoggedIn) {
             viewModel.loggedInUsername = authManager.isLoggedIn ? authManager.username : nil
-            if !authManager.isLoggedIn && viewModel.contentType.requiresAuth {
-                viewModel.contentType = .all
+            if authManager.isLoggedIn {
+                Task { await hideManager.syncHiddenList(username: authManager.username) }
+            } else {
+                hideManager.clearOnLogout()
+                if viewModel.contentType.requiresAuth {
+                    viewModel.contentType = .all
+                }
             }
         }
         .onAppear {

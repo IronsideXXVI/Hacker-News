@@ -28,6 +28,24 @@ enum AppearanceMode: String, CaseIterable {
 @Observable
 final class FeedViewModel {
     var stories: [HNItem] = []
+    var hideManager: HNHideManager?
+
+    var visibleStories: [HNItem] {
+        guard let hideManager, !hideManager.hiddenItemIDs.isEmpty else { return stories }
+        return stories.filter { !hideManager.isHidden($0.id) }
+    }
+
+    func isHidden(_ item: HNItem) -> Bool {
+        hideManager?.isHidden(item.id) ?? false
+    }
+
+    func hideStory(_ item: HNItem) async {
+        await hideManager?.hideItem(id: item.id)
+    }
+
+    func unhideStory(_ item: HNItem) async {
+        await hideManager?.unhideItem(id: item.id)
+    }
     var selectedStory: HNItem? {
         didSet {
             if selectedStory != nil {

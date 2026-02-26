@@ -685,6 +685,7 @@ struct ArticleWebView: NSViewRepresentable {
     var onCommentSortChanged: ((String) -> Void)?
     var onReadabilityChecked: ((Bool) -> Void)?
     var onNavigateToItem: ((Int, ViewMode, URL?) -> Void)?
+    var onHideToggled: ((Int, Bool) -> Void)?
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -692,7 +693,7 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, onNavigateToItem: ((Int, ViewMode, URL?) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, onNavigateToItem: ((Int, ViewMode, URL?) -> Void)? = nil, onHideToggled: ((Int, Bool) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
@@ -701,6 +702,7 @@ struct ArticleWebView: NSViewRepresentable {
         self.onCommentSortChanged = onCommentSortChanged
         self.onReadabilityChecked = onReadabilityChecked
         self.onNavigateToItem = onNavigateToItem
+        self.onHideToggled = onHideToggled
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -777,6 +779,7 @@ struct ArticleWebView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "scrollHandler")
         config.userContentController.add(context.coordinator, name: "commentSortHandler")
         config.userContentController.add(context.coordinator, name: "hnItemHandler")
+        config.userContentController.add(context.coordinator, name: "hnHideHandler")
 
         if adBlockingEnabled, let ruleList = Self.cachedContentRuleList {
             config.userContentController.add(ruleList)
@@ -825,6 +828,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "scrollHandler")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "commentSortHandler")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "hnItemHandler")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "hnHideHandler")
         webView.configuration.userContentController.removeAllContentRuleLists()
     }
 
@@ -1054,6 +1058,63 @@ struct ArticleWebView: NSViewRepresentable {
     })();
     """
 
+    // MARK: - Hide Link Interception JS
+
+    private static let hideInterceptionJS = """
+    (function() {
+        if (window.__hnHideInterceptionInstalled) return;
+        window.__hnHideInterceptionInstalled = true;
+
+        document.addEventListener('click', function(e) {
+            var target = e.target;
+            var link = null;
+            while (target && target !== document.body) {
+                if (target.tagName === 'A') { link = target; break; }
+                target = target.parentElement;
+            }
+            if (!link) return;
+
+            var href = link.getAttribute('href') || '';
+            if (href.indexOf('hide?id=') === -1) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            var idMatch = href.match(/id=(\\d+)/);
+            if (!idMatch) return;
+            var itemID = parseInt(idMatch[1], 10);
+            var isUnhide = href.indexOf('un=t') !== -1;
+
+            // Perform the hide/unhide via fetch (cookies are already available)
+            fetch('https://news.ycombinator.com/' + href.replace(/&amp;/g, '&'), { credentials: 'include' })
+                .then(function() {
+                    // Toggle the link text and href
+                    if (isUnhide) {
+                        var newHref = href.replace('&un=t', '').replace('&amp;un=t', '');
+                        link.setAttribute('href', newHref);
+                        link.textContent = 'hide';
+                    } else {
+                        var newHref = href.replace('auth=', 'un=t&auth=').replace('auth=', 'un=t&amp;auth=');
+                        if (href.indexOf('&amp;') !== -1) {
+                            newHref = href.replace('&amp;auth=', '&amp;un=t&amp;auth=');
+                        } else {
+                            newHref = href.replace('&auth=', '&un=t&auth=');
+                        }
+                        link.setAttribute('href', newHref);
+                        link.textContent = 'un-hide';
+                    }
+
+                    try {
+                        window.webkit.messageHandlers.hnHideHandler.postMessage({id: itemID, unhide: isUnhide});
+                    } catch(err) {}
+                })
+                .catch(function(err) {
+                    console.error('Hide request failed:', err);
+                });
+        }, true);
+    })();
+    """
+
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         var parent: ArticleWebView
         var currentURL: URL?
@@ -1071,6 +1132,15 @@ struct ArticleWebView: NSViewRepresentable {
                 let pageURL = (dict["url"] as? String).flatMap { URL(string: $0) }
                 DispatchQueue.main.async {
                     self.parent.onNavigateToItem?(itemID, .post, pageURL)
+                }
+                return
+            }
+            if message.name == "hnHideHandler",
+               let dict = message.body as? [String: Any],
+               let itemID = dict["id"] as? Int {
+                let isUnhide = dict["unhide"] as? Bool ?? false
+                DispatchQueue.main.async {
+                    self.parent.onHideToggled?(itemID, isUnhide)
                 }
                 return
             }
@@ -1145,6 +1215,10 @@ struct ArticleWebView: NSViewRepresentable {
 
             if parent.onNavigateToItem != nil {
                 webView.evaluateJavaScript(ArticleWebView.storyLinkInterceptionJS, completionHandler: nil)
+            }
+
+            if parent.onHideToggled != nil {
+                webView.evaluateJavaScript(ArticleWebView.hideInterceptionJS, completionHandler: nil)
             }
         }
 

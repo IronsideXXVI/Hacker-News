@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var viewModel: FeedViewModel
+    var isLoggedIn: Bool = false
     @State private var listSelection: HNItem?
 
     var body: some View {
@@ -79,7 +80,7 @@ struct SidebarView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 List(selection: $listSelection) {
-                    ForEach(Array(viewModel.stories.enumerated()), id: \.element.id) { index, item in
+                    ForEach(Array(viewModel.visibleStories.enumerated()), id: \.element.id) { index, item in
                         RowSelectionReader { isSelected in
                             Group {
                                 if item.type == "comment" {
@@ -98,6 +99,37 @@ struct SidebarView: View {
                             }
                         }
                         .tag(item)
+                        .contextMenu {
+                            Button {
+                                viewModel.toggleBookmark(item)
+                            } label: {
+                                Label(viewModel.isBookmarked(item) ? "Remove Bookmark" : "Bookmark", systemImage: viewModel.isBookmarked(item) ? "bookmark.fill" : "bookmark")
+                            }
+                            if isLoggedIn {
+                                Button {
+                                    Task {
+                                        if viewModel.isHidden(item) {
+                                            await viewModel.unhideStory(item)
+                                        } else {
+                                            await viewModel.hideStory(item)
+                                        }
+                                    }
+                                } label: {
+                                    Label(viewModel.isHidden(item) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(item) ? "eye" : "eye.slash")
+                                }
+                            }
+                            Divider()
+                            if let url = item.displayURL ?? Optional(item.commentsURL) {
+                                ShareLink(item: url) {
+                                    Label("Share", systemImage: "square.and.arrow.up")
+                                }
+                                Button {
+                                    NSWorkspace.shared.open(url)
+                                } label: {
+                                    Label("Open in Browser", systemImage: "safari")
+                                }
+                            }
+                        }
                         .onAppear {
                             Task { await viewModel.loadMoreIfNeeded(currentItem: item) }
                         }
