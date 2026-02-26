@@ -80,6 +80,29 @@ struct SettingsView: View {
                     Text("Updates")
                 }
             }
+
+            Section {
+                Link(destination: URL(string: "https://github.com/IronsideXXVI")!) {
+                    Label {
+                        Text("GitHub")
+                            .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
+                    } icon: {
+                        Image(systemName: "link")
+                            .foregroundStyle(.white)
+                    }
+                }
+                Link(destination: URL(string: "https://github.com/sponsors/IronsideXXVI")!) {
+                    Label {
+                        Text("Sponsor")
+                            .foregroundStyle(Color(red: 1.0, green: 0.4, blue: 0.0))
+                    } icon: {
+                        Image(systemName: "heart")
+                            .foregroundStyle(.white)
+                    }
+                }
+            } header: {
+                Text("About")
+            }
         }
         .font(.system(size: 13 * viewModel.textScale))
         .tint(Color(red: 1.0, green: 0.4, blue: 0.0))
