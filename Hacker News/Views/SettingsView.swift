@@ -9,7 +9,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Appearance", selection: $viewModel.appearanceMode) {
+                Picker("Color Scheme", selection: $viewModel.appearanceMode) {
                     ForEach(AppearanceMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue.capitalized).tag(mode)
                     }
