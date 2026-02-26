@@ -83,82 +83,86 @@ struct SidebarView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 let stories = viewModel.visibleStories
-                List {
-                    ForEach(stories) { item in
-                        let isSelected = viewModel.selectedStory?.id == item.id
-                        Group {
-                            if item.type == "comment" {
-                                CommentRowView(comment: item, textScale: viewModel.textScale, isSelected: isSelected) { username in
-                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
-                                        viewModel.navigateToProfile(url: url)
-                                    }
-                                }
-                            } else {
-                                let rank = (stories.firstIndex(where: { $0.id == item.id }) ?? 0) + 1
-                                StoryRowView(story: item, rank: rank, textScale: viewModel.textScale, isSelected: isSelected) { username in
-                                    if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
-                                        viewModel.navigateToProfile(url: url)
-                                    }
-                                }
-                            }
-                        }
-                        .listRowBackground(
-                            isSelected
-                                ? RoundedRectangle(cornerRadius: 5).fill(Color.accentColor)
-                                : nil
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            viewModel.navigate(to: item)
-                        }
-                        .contextMenu {
-                            Button {
-                                viewModel.toggleBookmark(item)
-                            } label: {
-                                Label(viewModel.isBookmarked(item) ? "Remove Bookmark" : "Bookmark", systemImage: viewModel.isBookmarked(item) ? "bookmark.fill" : "bookmark")
-                            }
-                            Button {
-                                if authManager.isLoggedIn {
-                                    Task {
-                                        if viewModel.isHidden(item) {
-                                            await viewModel.unhideStory(item)
-                                        } else {
-                                            await viewModel.hideStory(item)
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(stories) { item in
+                            let isSelected = viewModel.selectedStory?.id == item.id
+                            Group {
+                                if item.type == "comment" {
+                                    CommentRowView(comment: item, textScale: viewModel.textScale, isSelected: isSelected) { username in
+                                        if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                            viewModel.navigateToProfile(url: url)
                                         }
                                     }
                                 } else {
-                                    showingLoginSheet = true
+                                    let rank = (stories.firstIndex(where: { $0.id == item.id }) ?? 0) + 1
+                                    StoryRowView(story: item, rank: rank, textScale: viewModel.textScale, isSelected: isSelected) { username in
+                                        if let url = URL(string: "https://news.ycombinator.com/user?id=\(username)") {
+                                            viewModel.navigateToProfile(url: url)
+                                        }
+                                    }
                                 }
-                            } label: {
-                                Label(viewModel.isHidden(item) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(item) ? "eye" : "eye.slash")
                             }
-                            Divider()
-                            if let url = item.displayURL ?? Optional(item.commentsURL) {
-                                ShareLink(item: url) {
-                                    Label("Share", systemImage: "square.and.arrow.up")
+                            .padding(.horizontal, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 5)
+                                    .fill(isSelected ? Color.accentColor : .clear)
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                viewModel.navigate(to: item)
+                            }
+                            .contextMenu {
+                                Button {
+                                    viewModel.toggleBookmark(item)
+                                } label: {
+                                    Label(viewModel.isBookmarked(item) ? "Remove Bookmark" : "Bookmark", systemImage: viewModel.isBookmarked(item) ? "bookmark.fill" : "bookmark")
                                 }
                                 Button {
-                                    NSWorkspace.shared.open(url)
+                                    if authManager.isLoggedIn {
+                                        Task {
+                                            if viewModel.isHidden(item) {
+                                                await viewModel.unhideStory(item)
+                                            } else {
+                                                await viewModel.hideStory(item)
+                                            }
+                                        }
+                                    } else {
+                                        showingLoginSheet = true
+                                    }
                                 } label: {
-                                    Label("Open in Browser", systemImage: "safari")
+                                    Label(viewModel.isHidden(item) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(item) ? "eye" : "eye.slash")
+                                }
+                                Divider()
+                                if let url = item.displayURL ?? Optional(item.commentsURL) {
+                                    ShareLink(item: url) {
+                                        Label("Share", systemImage: "square.and.arrow.up")
+                                    }
+                                    Button {
+                                        NSWorkspace.shared.open(url)
+                                    } label: {
+                                        Label("Open in Browser", systemImage: "safari")
+                                    }
                                 }
                             }
+                            .onAppear {
+                                Task { await viewModel.loadMoreIfNeeded(currentItem: item) }
+                            }
                         }
-                        .onAppear {
-                            Task { await viewModel.loadMoreIfNeeded(currentItem: item) }
-                        }
-                    }
 
-                    if viewModel.isLoading && !viewModel.stories.isEmpty {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                                .controlSize(.small)
-                            Spacer()
+                        if viewModel.isLoading && !viewModel.stories.isEmpty {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .controlSize(.small)
+                                Spacer()
+                            }
+                            .padding(.vertical, 8)
                         }
                     }
+                    .padding(.horizontal, 6)
+                    .padding(.top, 4)
                 }
-                .listStyle(.sidebar)
             }
         }
     }
