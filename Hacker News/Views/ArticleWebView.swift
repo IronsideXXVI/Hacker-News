@@ -35,31 +35,161 @@ class WebViewProxy {
             .replacingOccurrences(of: "\n", with: "\\n")
     }
 
+    // MARK: - Find Highlighting
+
+    private static let findHighlightJS = """
+    (function() {
+        if (window.__hnFind) return;
+        var STYLE_ID = 'hn-find-styles';
+        var MATCH_CLASS = 'hn-find-match';
+        var CURRENT_CLASS = 'hn-find-current';
+        var SKIP_TAGS = {SCRIPT:1, STYLE:1, NOSCRIPT:1, TEXTAREA:1, INPUT:1, SELECT:1};
+        window.__hnFind = {
+            matches: [],
+            currentIndex: -1,
+            query: '',
+            _injectStyles: function() {
+                if (document.getElementById(STYLE_ID)) return;
+                var s = document.createElement('style');
+                s.id = STYLE_ID;
+                s.textContent =
+                    'mark.' + MATCH_CLASS + '{' +
+                    'background-color:rgba(255,102,0,0.3);' +
+                    'color:inherit;' +
+                    'border-radius:2px;' +
+                    'padding:0;' +
+                    'box-decoration-break:clone;' +
+                    '-webkit-box-decoration-break:clone;' +
+                    '}' +
+                    'mark.' + MATCH_CLASS + '.' + CURRENT_CLASS + '{' +
+                    'background-color:rgba(255,102,0,0.75);' +
+                    'outline:2px solid #FF6600;' +
+                    'outline-offset:1px;' +
+                    '}' +
+                    '@media(prefers-color-scheme:dark){' +
+                    'mark.' + MATCH_CLASS + '{' +
+                    'background-color:rgba(255,102,0,0.35);' +
+                    '}' +
+                    'mark.' + MATCH_CLASS + '.' + CURRENT_CLASS + '{' +
+                    'background-color:rgba(255,102,0,0.65);' +
+                    'outline-color:#FF8533;' +
+                    '}' +
+                    '}';
+                document.head.appendChild(s);
+            },
+            clear: function() {
+                for (var i = this.matches.length - 1; i >= 0; i--) {
+                    var mark = this.matches[i];
+                    var parent = mark.parentNode;
+                    if (!parent) continue;
+                    var text = document.createTextNode(mark.textContent);
+                    parent.replaceChild(text, mark);
+                }
+                document.body.normalize();
+                this.matches = [];
+                this.currentIndex = -1;
+                this.query = '';
+            },
+            highlight: function(query) {
+                this.clear();
+                if (!query) return {count:0, current:0};
+                this._injectStyles();
+                var q = query.toLowerCase();
+                this.query = q;
+                var qLen = q.length;
+                var textNodes = [];
+                var walker = document.createTreeWalker(
+                    document.body,
+                    NodeFilter.SHOW_TEXT,
+                    {acceptNode: function(node) {
+                        var p = node.parentElement;
+                        if (!p) return NodeFilter.FILTER_REJECT;
+                        if (SKIP_TAGS[p.tagName]) return NodeFilter.FILTER_REJECT;
+                        return NodeFilter.FILTER_ACCEPT;
+                    }}
+                );
+                while (walker.nextNode()) textNodes.push(walker.currentNode);
+                for (var t = 0; t < textNodes.length; t++) {
+                    var node = textNodes[t];
+                    var text = node.textContent;
+                    var lower = text.toLowerCase();
+                    var idx = lower.indexOf(q);
+                    if (idx === -1) continue;
+                    while (idx !== -1) {
+                        var matchNode;
+                        if (idx > 0) {
+                            matchNode = node.splitText(idx);
+                        } else {
+                            matchNode = node;
+                        }
+                        var afterNode = matchNode.splitText(qLen);
+                        var mark = document.createElement('mark');
+                        mark.className = MATCH_CLASS;
+                        matchNode.parentNode.replaceChild(mark, matchNode);
+                        mark.appendChild(matchNode);
+                        this.matches.push(mark);
+                        node = afterNode;
+                        text = node.textContent;
+                        lower = text.toLowerCase();
+                        idx = lower.indexOf(q);
+                    }
+                }
+                if (this.matches.length > 0) {
+                    this.currentIndex = 0;
+                    this.matches[0].classList.add(CURRENT_CLASS);
+                    this.matches[0].scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'});
+                }
+                return {count: this.matches.length, current: this.matches.length > 0 ? 1 : 0};
+            },
+            _goToMatch: function(index) {
+                if (this.currentIndex >= 0 && this.currentIndex < this.matches.length) {
+                    this.matches[this.currentIndex].classList.remove(CURRENT_CLASS);
+                }
+                this.currentIndex = index;
+                this.matches[index].classList.add(CURRENT_CLASS);
+                this.matches[index].scrollIntoView({behavior:'smooth', block:'center', inline:'nearest'});
+            },
+            next: function() {
+                if (this.matches.length === 0) return {count:0, current:0};
+                var i = (this.currentIndex + 1) % this.matches.length;
+                this._goToMatch(i);
+                return {count: this.matches.length, current: i + 1};
+            },
+            previous: function() {
+                if (this.matches.length === 0) return {count:0, current:0};
+                var i = (this.currentIndex - 1 + this.matches.length) % this.matches.length;
+                this._goToMatch(i);
+                return {count: this.matches.length, current: i + 1};
+            }
+        };
+    })()
+    """
+
+    private func ensureFindModule() async {
+        guard let webView else { return }
+        let exists = try? await webView.evaluateJavaScript("typeof window.__hnFind !== 'undefined'") as? Bool
+        if exists != true {
+            try? await webView.evaluateJavaScript(Self.findHighlightJS)
+        }
+    }
+
     func countMatches(_ text: String) async {
         guard !text.isEmpty, let webView else {
             matchCount = 0
             currentMatch = 0
             return
         }
-        let js = """
-        (function() {
-            var query = '\(escaped(text))';
-            var body = document.body.innerText;
-            var count = 0;
-            var lower = body.toLowerCase();
-            var q = query.toLowerCase();
-            var pos = lower.indexOf(q);
-            while (pos !== -1) {
-                count++;
-                pos = lower.indexOf(q, pos + 1);
-            }
-            return count;
-        })()
-        """
+        await ensureFindModule()
+        let js = "window.__hnFind.highlight('\(escaped(text))')"
         do {
             let result = try await webView.evaluateJavaScript(js)
-            matchCount = (result as? Int) ?? 0
-            currentMatch = matchCount > 0 ? 1 : 0
+            if let dict = result as? [String: Any] {
+                matchCount = (dict["count"] as? Int) ?? 0
+                currentMatch = (dict["current"] as? Int) ?? 0
+            } else {
+                matchCount = 0
+                currentMatch = 0
+            }
         } catch {
             matchCount = 0
             currentMatch = 0
@@ -68,41 +198,32 @@ class WebViewProxy {
 
     func findNext(_ text: String) {
         guard !text.isEmpty, let webView else { return }
-        webView.evaluateJavaScript("window.find('\(escaped(text))', false, false, true)") { [weak self] result, _ in
-            guard let self else { return }
-            let found = (result as? Bool) ?? false
-            if found && self.matchCount > 0 {
-                DispatchQueue.main.async {
-                    self.currentMatch = self.currentMatch >= self.matchCount ? 1 : self.currentMatch + 1
-                }
+        webView.evaluateJavaScript("window.__hnFind ? window.__hnFind.next() : {count:0, current:0}") { [weak self] result, _ in
+            guard let self, let dict = result as? [String: Any] else { return }
+            DispatchQueue.main.async {
+                self.matchCount = (dict["count"] as? Int) ?? self.matchCount
+                self.currentMatch = (dict["current"] as? Int) ?? self.currentMatch
             }
         }
     }
 
     func findPrevious(_ text: String) {
         guard !text.isEmpty, let webView else { return }
-        webView.evaluateJavaScript("window.find('\(escaped(text))', false, true, true)") { [weak self] result, _ in
-            guard let self else { return }
-            let found = (result as? Bool) ?? false
-            if found && self.matchCount > 0 {
-                DispatchQueue.main.async {
-                    self.currentMatch = self.currentMatch <= 1 ? self.matchCount : self.currentMatch - 1
-                }
+        webView.evaluateJavaScript("window.__hnFind ? window.__hnFind.previous() : {count:0, current:0}") { [weak self] result, _ in
+            guard let self, let dict = result as? [String: Any] else { return }
+            DispatchQueue.main.async {
+                self.matchCount = (dict["count"] as? Int) ?? self.matchCount
+                self.currentMatch = (dict["current"] as? Int) ?? self.currentMatch
             }
         }
     }
 
     func findFirst(_ text: String) {
-        guard !text.isEmpty, let webView else { return }
-        // Move selection to start of document so find starts from top
-        webView.evaluateJavaScript("window.getSelection().removeAllRanges()") { [weak self] _, _ in
-            guard let self, let webView = self.webView else { return }
-            webView.evaluateJavaScript("window.find('\(self.escaped(text))', false, false, true)", completionHandler: nil)
-        }
+        // highlight() in countMatches already navigates to the first match
     }
 
     func clearSelection() {
-        webView?.evaluateJavaScript("window.getSelection().removeAllRanges()", completionHandler: nil)
+        webView?.evaluateJavaScript("if(window.__hnFind) window.__hnFind.clear(); window.getSelection().removeAllRanges();", completionHandler: nil)
         matchCount = 0
         currentMatch = 0
     }
