@@ -686,6 +686,8 @@ struct ArticleWebView: NSViewRepresentable {
     var onReadabilityChecked: ((Bool) -> Void)?
     var onNavigateToItem: ((Int, ViewMode, URL?) -> Void)?
     var onHideToggled: ((Int, Bool) -> Void)?
+    var onLoginRequired: (() -> Void)?
+    var isLoggedIn: Bool = false
     @Binding var scrollProgress: Double
     @Binding var isLoading: Bool
     @Binding var loadError: String?
@@ -693,7 +695,7 @@ struct ArticleWebView: NSViewRepresentable {
 
     private static var cachedContentRuleList: WKContentRuleList?
 
-    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, onNavigateToItem: ((Int, ViewMode, URL?) -> Void)? = nil, onHideToggled: ((Int, Bool) -> Void)? = nil, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
+    init(url: URL, adBlockingEnabled: Bool = true, popUpBlockingEnabled: Bool = true, textScale: Double = 1.0, webViewProxy: WebViewProxy? = nil, onCommentSortChanged: ((String) -> Void)? = nil, onReadabilityChecked: ((Bool) -> Void)? = nil, onNavigateToItem: ((Int, ViewMode, URL?) -> Void)? = nil, onHideToggled: ((Int, Bool) -> Void)? = nil, onLoginRequired: (() -> Void)? = nil, isLoggedIn: Bool = false, scrollProgress: Binding<Double> = .constant(0), isLoading: Binding<Bool> = .constant(false), loadError: Binding<String?> = .constant(nil)) {
         self.url = url
         self.adBlockingEnabled = adBlockingEnabled
         self.popUpBlockingEnabled = popUpBlockingEnabled
@@ -703,6 +705,8 @@ struct ArticleWebView: NSViewRepresentable {
         self.onReadabilityChecked = onReadabilityChecked
         self.onNavigateToItem = onNavigateToItem
         self.onHideToggled = onHideToggled
+        self.onLoginRequired = onLoginRequired
+        self.isLoggedIn = isLoggedIn
         self._scrollProgress = scrollProgress
         self._isLoading = isLoading
         self._loadError = loadError
@@ -780,6 +784,7 @@ struct ArticleWebView: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "commentSortHandler")
         config.userContentController.add(context.coordinator, name: "hnItemHandler")
         config.userContentController.add(context.coordinator, name: "hnHideHandler")
+        config.userContentController.add(context.coordinator, name: "hnLoginHandler")
 
         if adBlockingEnabled, let ruleList = Self.cachedContentRuleList {
             config.userContentController.add(ruleList)
@@ -815,6 +820,7 @@ struct ArticleWebView: NSViewRepresentable {
         let scheme = colorScheme == .dark ? "dark" : "light"
         webView.evaluateJavaScript("if (location.hostname.indexOf('ycombinator.com') !== -1) { document.documentElement.style.colorScheme = '\(scheme)'; }", completionHandler: nil)
         webView.pageZoom = CGFloat(textScale)
+        webView.evaluateJavaScript("window.__hnIsLoggedIn = \(isLoggedIn);", completionHandler: nil)
         if context.coordinator.currentURL != url {
             webView.evaluateJavaScript(Self.pauseAllMediaJS, completionHandler: nil)
             context.coordinator.currentURL = url
@@ -829,6 +835,7 @@ struct ArticleWebView: NSViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "commentSortHandler")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "hnItemHandler")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "hnHideHandler")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "hnLoginHandler")
         webView.configuration.userContentController.removeAllContentRuleLists()
     }
 
@@ -1060,60 +1067,69 @@ struct ArticleWebView: NSViewRepresentable {
 
     // MARK: - Hide Link Interception JS
 
-    private static let hideInterceptionJS = """
-    (function() {
-        if (window.__hnHideInterceptionInstalled) return;
-        window.__hnHideInterceptionInstalled = true;
+    private static func hideInterceptionJS(isLoggedIn: Bool) -> String {
+        """
+        (function() {
+            window.__hnIsLoggedIn = \(isLoggedIn);
 
-        document.addEventListener('click', function(e) {
-            var target = e.target;
-            var link = null;
-            while (target && target !== document.body) {
-                if (target.tagName === 'A') { link = target; break; }
-                target = target.parentElement;
-            }
-            if (!link) return;
+            if (window.__hnHideInterceptionInstalled) return;
+            window.__hnHideInterceptionInstalled = true;
 
-            var href = link.getAttribute('href') || '';
-            if (href.indexOf('hide?id=') === -1) return;
+            document.addEventListener('click', function(e) {
+                var target = e.target;
+                var link = null;
+                while (target && target !== document.body) {
+                    if (target.tagName === 'A') { link = target; break; }
+                    target = target.parentElement;
+                }
+                if (!link) return;
 
-            e.preventDefault();
-            e.stopPropagation();
+                var href = link.getAttribute('href') || '';
+                if (href.indexOf('hide?id=') === -1) return;
 
-            var idMatch = href.match(/id=(\\d+)/);
-            if (!idMatch) return;
-            var itemID = parseInt(idMatch[1], 10);
-            var isUnhide = href.indexOf('un=t') !== -1;
+                e.preventDefault();
+                e.stopPropagation();
 
-            // Perform the hide/unhide via fetch (cookies are already available)
-            fetch('https://news.ycombinator.com/' + href.replace(/&amp;/g, '&'), { credentials: 'include' })
-                .then(function() {
-                    // Toggle the link text and href
-                    if (isUnhide) {
-                        var newHref = href.replace('&un=t', '').replace('&amp;un=t', '');
-                        link.setAttribute('href', newHref);
-                        link.textContent = 'hide';
-                    } else {
-                        var newHref = href.replace('auth=', 'un=t&auth=').replace('auth=', 'un=t&amp;auth=');
-                        if (href.indexOf('&amp;') !== -1) {
-                            newHref = href.replace('&amp;auth=', '&amp;un=t&amp;auth=');
-                        } else {
-                            newHref = href.replace('&auth=', '&un=t&auth=');
-                        }
-                        link.setAttribute('href', newHref);
-                        link.textContent = 'un-hide';
-                    }
-
+                if (!window.__hnIsLoggedIn) {
                     try {
-                        window.webkit.messageHandlers.hnHideHandler.postMessage({id: itemID, unhide: isUnhide});
+                        window.webkit.messageHandlers.hnLoginHandler.postMessage(true);
                     } catch(err) {}
-                })
-                .catch(function(err) {
-                    console.error('Hide request failed:', err);
-                });
-        }, true);
-    })();
-    """
+                    return;
+                }
+
+                var idMatch = href.match(/id=(\\d+)/);
+                if (!idMatch) return;
+                var itemID = parseInt(idMatch[1], 10);
+                var isUnhide = href.indexOf('un=t') !== -1;
+
+                fetch('https://news.ycombinator.com/' + href.replace(/&amp;/g, '&'), { credentials: 'include' })
+                    .then(function() {
+                        if (isUnhide) {
+                            var newHref = href.replace('&un=t', '').replace('&amp;un=t', '');
+                            link.setAttribute('href', newHref);
+                            link.textContent = 'hide';
+                        } else {
+                            var newHref;
+                            if (href.indexOf('&amp;') !== -1) {
+                                newHref = href.replace('&amp;auth=', '&amp;un=t&amp;auth=');
+                            } else {
+                                newHref = href.replace('&auth=', '&un=t&auth=');
+                            }
+                            link.setAttribute('href', newHref);
+                            link.textContent = 'un-hide';
+                        }
+
+                        try {
+                            window.webkit.messageHandlers.hnHideHandler.postMessage({id: itemID, unhide: isUnhide});
+                        } catch(err) {}
+                    })
+                    .catch(function(err) {
+                        console.error('Hide request failed:', err);
+                    });
+            }, true);
+        })();
+        """
+    }
 
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate {
         var parent: ArticleWebView
@@ -1141,6 +1157,12 @@ struct ArticleWebView: NSViewRepresentable {
                 let isUnhide = dict["unhide"] as? Bool ?? false
                 DispatchQueue.main.async {
                     self.parent.onHideToggled?(itemID, isUnhide)
+                }
+                return
+            }
+            if message.name == "hnLoginHandler" {
+                DispatchQueue.main.async {
+                    self.parent.onLoginRequired?()
                 }
                 return
             }
@@ -1217,8 +1239,8 @@ struct ArticleWebView: NSViewRepresentable {
                 webView.evaluateJavaScript(ArticleWebView.storyLinkInterceptionJS, completionHandler: nil)
             }
 
-            if parent.onHideToggled != nil {
-                webView.evaluateJavaScript(ArticleWebView.hideInterceptionJS, completionHandler: nil)
+            if parent.onHideToggled != nil || parent.onLoginRequired != nil {
+                webView.evaluateJavaScript(ArticleWebView.hideInterceptionJS(isLoggedIn: parent.isLoggedIn), completionHandler: nil)
             }
         }
 

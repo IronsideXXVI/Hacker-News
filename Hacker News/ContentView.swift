@@ -11,7 +11,7 @@ struct ContentView: View {
             columnVisibility: $columnVisibility
         ) {
             Group {
-                SidebarView(viewModel: viewModel, isLoggedIn: authManager.isLoggedIn)
+                SidebarView(viewModel: viewModel, authManager: authManager)
                     .toolbar(removing: .sidebarToggle)
             }
             .navigationSplitViewColumnWidth(min: 250, ideal: 375, max: 375)

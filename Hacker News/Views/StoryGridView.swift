@@ -2,7 +2,8 @@ import SwiftUI
 
 struct StoryGridView: View {
     @Bindable var viewModel: FeedViewModel
-    var isLoggedIn: Bool = false
+    var authManager: HNAuthManager
+    @State private var showingLoginSheet = false
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: 280 * viewModel.textScale, maximum: 400 * viewModel.textScale), spacing: 16)]
@@ -43,8 +44,8 @@ struct StoryGridView: View {
                                     } label: {
                                         Label(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Bookmark", systemImage: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
                                     }
-                                    if isLoggedIn {
-                                        Button {
+                                    Button {
+                                        if authManager.isLoggedIn {
                                             Task {
                                                 if viewModel.isHidden(story) {
                                                     await viewModel.unhideStory(story)
@@ -52,9 +53,11 @@ struct StoryGridView: View {
                                                     await viewModel.hideStory(story)
                                                 }
                                             }
-                                        } label: {
-                                            Label(viewModel.isHidden(story) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(story) ? "eye" : "eye.slash")
+                                        } else {
+                                            showingLoginSheet = true
                                         }
+                                    } label: {
+                                        Label(viewModel.isHidden(story) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(story) ? "eye" : "eye.slash")
                                     }
                                     Divider()
                                     if let url = story.displayURL ?? Optional(story.commentsURL) {
@@ -79,5 +82,8 @@ struct StoryGridView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: $showingLoginSheet) {
+            LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
+        }
     }
 }

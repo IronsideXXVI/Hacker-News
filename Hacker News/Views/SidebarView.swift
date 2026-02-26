@@ -2,8 +2,9 @@ import SwiftUI
 
 struct SidebarView: View {
     @Bindable var viewModel: FeedViewModel
-    var isLoggedIn: Bool = false
+    var authManager: HNAuthManager
     @State private var listSelection: HNItem?
+    @State private var showingLoginSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,6 +61,9 @@ struct SidebarView: View {
 
             storyListView
         }
+        .sheet(isPresented: $showingLoginSheet) {
+            LoginSheetView(authManager: authManager, textScale: viewModel.textScale)
+        }
     }
 
     private var storyListView: some View {
@@ -105,8 +109,8 @@ struct SidebarView: View {
                             } label: {
                                 Label(viewModel.isBookmarked(item) ? "Remove Bookmark" : "Bookmark", systemImage: viewModel.isBookmarked(item) ? "bookmark.fill" : "bookmark")
                             }
-                            if isLoggedIn {
-                                Button {
+                            Button {
+                                if authManager.isLoggedIn {
                                     Task {
                                         if viewModel.isHidden(item) {
                                             await viewModel.unhideStory(item)
@@ -114,9 +118,11 @@ struct SidebarView: View {
                                             await viewModel.hideStory(item)
                                         }
                                     }
-                                } label: {
-                                    Label(viewModel.isHidden(item) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(item) ? "eye" : "eye.slash")
+                                } else {
+                                    showingLoginSheet = true
                                 }
+                            } label: {
+                                Label(viewModel.isHidden(item) ? "Unhide" : "Hide", systemImage: viewModel.isHidden(item) ? "eye" : "eye.slash")
                             }
                             Divider()
                             if let url = item.displayURL ?? Optional(item.commentsURL) {

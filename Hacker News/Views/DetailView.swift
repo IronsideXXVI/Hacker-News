@@ -38,7 +38,7 @@ struct DetailView: View {
         } else if let story = viewModel.selectedStory {
             storyContentView(for: story)
         } else {
-            StoryGridView(viewModel: viewModel, isLoggedIn: authManager.isLoggedIn)
+            StoryGridView(viewModel: viewModel, authManager: authManager)
         }
     }
 
@@ -147,20 +147,6 @@ struct DetailView: View {
                     Image(systemName: viewModel.isBookmarked(story) ? "bookmark.fill" : "bookmark")
                 }
                 .help(viewModel.isBookmarked(story) ? "Remove Bookmark" : "Add Bookmark")
-                if authManager.isLoggedIn {
-                    Button {
-                        Task {
-                            if viewModel.isHidden(story) {
-                                await viewModel.unhideStory(story)
-                            } else {
-                                await viewModel.hideStory(story)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: viewModel.isHidden(story) ? "eye" : "eye.slash")
-                    }
-                    .help(viewModel.isHidden(story) ? "Unhide Story" : "Hide Story")
-                }
             }
             if let url = currentExternalURL {
                 ShareLink(item: url) {
@@ -341,7 +327,7 @@ struct DetailView: View {
             scrollProgressBar()
             if viewModel.showFindBar { findBar() }
             ZStack {
-                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, onHideToggled: handleHideToggled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                ArticleWebView(url: profileURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, onHideToggled: handleHideToggled, onLoginRequired: { showingLoginSheet = true }, isLoggedIn: authManager.isLoggedIn, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                     .id(webViewID)
                     .opacity(showContent ? 1 : 0)
                     .animation(.easeIn(duration: 0.2), value: showContent)
@@ -365,7 +351,7 @@ struct DetailView: View {
                 dualPaneView(articleURL: articleURL, commentsURL: story.commentsURL)
             } else {
                 ZStack {
-                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, onHideToggled: handleHideToggled, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
+                    ArticleWebView(url: story.commentsURL, adBlockingEnabled: viewModel.adBlockingEnabled, popUpBlockingEnabled: viewModel.popUpBlockingEnabled, textScale: viewModel.textScale, webViewProxy: webViewProxy, onCommentSortChanged: handleCommentSortChanged, onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) }, onHideToggled: handleHideToggled, onLoginRequired: { showingLoginSheet = true }, isLoggedIn: authManager.isLoggedIn, scrollProgress: $scrollProgress, isLoading: $isWebViewLoading, loadError: $webLoadError)
                         .id(webViewID)
                         .opacity(showContent ? 1 : 0)
                         .animation(.easeIn(duration: 0.2), value: showContent)
@@ -580,6 +566,7 @@ struct DetailView: View {
     }
 
     private func handleHideToggled(itemID: Int, isUnhide: Bool) {
+        guard authManager.isLoggedIn else { return }
         hideManager.onItemHiddenFromWeb(id: itemID, isUnhide: isUnhide)
     }
 
@@ -670,6 +657,8 @@ struct DetailView: View {
                     onCommentSortChanged: handleCommentSortChanged,
                     onNavigateToItem: { viewModel.navigateToStory(id: $0, viewMode: $1, currentWebURL: $2) },
                     onHideToggled: handleHideToggled,
+                    onLoginRequired: { showingLoginSheet = true },
+                    isLoggedIn: authManager.isLoggedIn,
                     scrollProgress: $commentsScrollProgress,
                     isLoading: $isCommentsWebViewLoading,
                     loadError: $commentsWebLoadError
