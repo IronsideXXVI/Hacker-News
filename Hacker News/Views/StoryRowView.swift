@@ -15,20 +15,6 @@ struct StoryRowView: View {
         ceil(13 * textScale * 1.2)
     }
 
-    private var metadataText: Text {
-        var result = Text("")
-        if let score = story.score {
-            result = result + Text("\(score) points ")
-        }
-        if let by = story.by {
-            result = result + Text("by ") + Text(by).foregroundColor(isSelected ? .white : .orange) + Text(" ")
-        }
-        result = result + Text(story.timeAgo)
-        if let descendants = story.descendants {
-            result = result + Text(" | \(descendants) comments")
-        }
-        return result
-    }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -66,15 +52,34 @@ struct StoryRowView: View {
                     }
                 }
 
-                metadataText
-                    .font(.system(size: 10 * textScale))
-                    .foregroundStyle(adaptiveSecondary)
-                    .lineLimit(1)
-                    .onTapGesture {
-                        if let by = story.by {
-                            onUsernameTap?(by)
-                        }
+                HStack(spacing: 0) {
+                    if let score = story.score {
+                        Text("\(score) points ")
                     }
+                    if let by = story.by {
+                        Text("by ")
+                        Text(by)
+                            .foregroundStyle(isSelected ? .white : .orange)
+                            .onHover { hovering in
+                                if hovering {
+                                    NSCursor.pointingHand.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                            .onTapGesture {
+                                onUsernameTap?(by)
+                            }
+                        Text(" ")
+                    }
+                    Text(story.timeAgo)
+                    if let descendants = story.descendants {
+                        Text(" | \(descendants) comments")
+                    }
+                }
+                .font(.system(size: 10 * textScale))
+                .foregroundStyle(adaptiveSecondary)
+                .lineLimit(1)
             }
         }
         .foregroundStyle(isSelected ? .white : .primary)
