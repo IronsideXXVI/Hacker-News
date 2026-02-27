@@ -30,10 +30,13 @@ struct StoryRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        // Line 1: title (truncated to fit alongside domain)
+                        // Line 1: title (clipped to first line, wraps at same point as line 2)
                         Text(story.title ?? "Untitled")
                             .font(.system(size: 13 * textScale))
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(height: titleLineHeight, alignment: .top)
+                            .clipped()
 
                         // Line 2: title continuation (same width as line 1, collapses for short titles)
                         Text(story.title ?? "Untitled")
