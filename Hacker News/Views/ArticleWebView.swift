@@ -169,7 +169,7 @@ class WebViewProxy {
         guard let webView else { return }
         let exists = try? await webView.evaluateJavaScript("typeof window.__hnFind !== 'undefined'") as? Bool
         if exists != true {
-            try? await webView.evaluateJavaScript(Self.findHighlightJS)
+            _ = try? await webView.evaluateJavaScript(Self.findHighlightJS)
         }
     }
 
@@ -917,6 +917,7 @@ struct ArticleWebView: NSViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.allowsBackForwardNavigationGestures = true
+        webView.allowsMagnification = true
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         let appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)!
