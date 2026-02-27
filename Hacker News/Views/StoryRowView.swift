@@ -67,6 +67,6 @@ struct StoryRowView: View {
         }
         .foregroundStyle(isSelected ? .white : .primary)
         .padding(.vertical, 2)
-        .frame(height: 68 * textScale, alignment: .center)
+        .frame(height: 74 * textScale, alignment: .center)
     }
 }
