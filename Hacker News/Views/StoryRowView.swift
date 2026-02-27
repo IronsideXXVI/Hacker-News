@@ -11,10 +11,6 @@ struct StoryRowView: View {
         isSelected ? .white : .secondary
     }
 
-    private var titleLineHeight: CGFloat {
-        ceil(13 * textScale * 1.2)
-    }
-
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -28,31 +24,15 @@ struct StoryRowView: View {
                 .foregroundStyle(isSelected ? .white : .orange)
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Line 1: title (clipped to first line, wraps at same point as line 2)
-                        Text(story.title ?? "Untitled")
-                            .font(.system(size: 13 * textScale))
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(height: titleLineHeight, alignment: .top)
-                            .clipped()
+                Text(story.title ?? "Untitled")
+                    .font(.system(size: 13 * textScale))
+                    .lineLimit(2)
 
-                        // Line 2: title continuation (same width as line 1, collapses for short titles)
-                        Text(story.title ?? "Untitled")
-                            .font(.system(size: 13 * textScale))
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, -titleLineHeight)
-                            .clipped()
-                    }
-
-                    if let domain = story.displayDomain {
-                        Text(" (\(domain))")
-                            .font(.system(size: 10 * textScale))
-                            .foregroundStyle(adaptiveSecondary)
-                            .fixedSize(horizontal: true, vertical: false)
-                    }
+                if let domain = story.displayDomain {
+                    Text("(\(domain))")
+                        .font(.system(size: 10 * textScale))
+                        .foregroundStyle(adaptiveSecondary)
+                        .lineLimit(1)
                 }
 
                 HStack(spacing: 0) {
@@ -87,6 +67,6 @@ struct StoryRowView: View {
         }
         .foregroundStyle(isSelected ? .white : .primary)
         .padding(.vertical, 2)
-        .frame(height: 54 * textScale, alignment: .center)
+        .frame(height: 68 * textScale, alignment: .center)
     }
 }
